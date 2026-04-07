@@ -1,7 +1,3 @@
-%YAML 1.1
-%TAG !u! tag:unity3d.com,2011:
---- !u!655991488 &1
-MultiplayerManager:
-  m_ObjectHideFlags: 0
-  m_EnableMultiplayerRoles: 0
-  m_StrippingTypes: {}
+version https://git-lfs.github.com/spec/v1
+oid sha256:b0dab92289d6ed43c0bbc7896db56a314b7a183b85502348185e42ae12ccdd69
+size 355
