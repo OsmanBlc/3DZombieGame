@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 0ee18baeaa66f1e4ca3764815630cfe6
+guid: 1255e829cfe0d16469ef70dd5e39af7c
 NativeFormatImporter:
   externalObjects: {}
-  mainObjectFileID: 11400000
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 181470
-  packageName: Survivalist character
-  packageVersion: 1.2
-  assetPath: Assets/Survivalist/Settings/UniversalRenderPipelineGlobalSettings.asset
-  uploadId: 762486

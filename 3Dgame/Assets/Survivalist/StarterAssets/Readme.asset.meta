@@ -1,15 +1,8 @@
 fileFormatVersion: 2
-guid: 4181bfe715a83e843b7538d750dc57cc
-timeCreated: 1484217493
-licenseType: Store
+guid: a2f82bcf0dc63734cba86ef4fd9e26d6
 NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 181470
-  packageName: Survivalist character
-  packageVersion: 1.2
-  assetPath: Assets/Survivalist/StarterAssets/Readme.asset
-  uploadId: 762486
