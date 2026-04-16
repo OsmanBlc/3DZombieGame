@@ -3,7 +3,32 @@ guid: 9158eb4fca3492b46acbe92e4fc2100e
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: body_low_Body+Parts_0_Material.001_Material.003Mat
+    second: {fileID: 2100000, guid: 84fb1a6bbd79467469e2e3bd6a49d374, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: bullet_low_Mag+Bullet_0_MagBullet_MagBullet.002Mat
+    second: {fileID: 2100000, guid: 84fb1a6bbd79467469e2e3bd6a49d374, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: grip_right_low_Slide+Grips_0_SlideGrips_Material.004Mat
+    second: {fileID: 2100000, guid: 84fb1a6bbd79467469e2e3bd6a49d374, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: mag_low_Mag+Bullet_0_MagBullet_Material.005Mat
+    second: {fileID: 2100000, guid: 84fb1a6bbd79467469e2e3bd6a49d374, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: slide_low_Slide+Grips_0_SlideGrips_SlideGrips.002Mat
+    second: {fileID: 2100000, guid: 84fb1a6bbd79467469e2e3bd6a49d374, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
