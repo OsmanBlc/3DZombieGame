@@ -1,97 +1,209 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.UI; // YENİ: UI elementlerini (Image) kodla değiştirebilmek için bu kütüphane şart!
+using UnityEngine.UI;
+using TMPro;
 
 public class SilahAtes : MonoBehaviour
 {
     [Header("Silah İstatistikleri")]
     public float hasar = 25f;
+    public float kafaHasarCarpani = 2f;
     public float menzil = 100f;
     public float atisAraligi = 0.5f;
     private float birSonrakiAtisZamani = 0f;
+
+    [Header("Mermi Sistemi")]
+    public int sagdakiMermi = 15;
+    public int sarjorKapasitesi = 15;
+    public int mevcutMermi;
+    public float reloadSuresi = 2f;
+    private bool yenidenDolduruyor = false;
 
     [Header("Referanslar")]
     public Camera oyuncuKamerasi;
     public ParticleSystem namluAtesi;
     public AudioSource silahSesi;
 
+    [Header("UI")]
+    public TMP_Text mermiYazisi;
+
     [Header("Nişangah Ayarları")]
-    public Image nisangahGorseli;            // UI'daki Crosshair görselimiz
-    public Color normalRenk = Color.white;   // Duvara/boşluğa bakarkenki renk
-    public Color zombiRengi = Color.red;     // Zombiye bakarkenki renk
+    public Image nisangahGorseli;
+    public Color normalRenk = Color.white;
+    public Color zombiRengi = Color.red;
+    public float vurusBuyumeMiktari = 1.3f;
+    public float vurusEfektSuresi = 0.08f;
+
+    [Header("Efektler")]
+    public GameObject kanEfekti;
+
+    private SilahHissiyat hissiyat;
+    private Vector3 nisangahOrijinalScale;
+    private bool nisangahEfektiCalisiyor = false;
+
+    void Start()
+    {
+        if (oyuncuKamerasi == null)
+            oyuncuKamerasi = Camera.main;
+
+        if (silahSesi == null)
+            silahSesi = GetComponent<AudioSource>();
+
+        hissiyat = GetComponent<SilahHissiyat>();
+
+        mevcutMermi = sarjorKapasitesi;
+
+        if (nisangahGorseli != null)
+            nisangahOrijinalScale = nisangahGorseli.rectTransform.localScale;
+
+        MermiUIGuncelle();
+    }
 
     void Update()
     {
-        // 1. Sürekli olarak nereye baktığımızı kontrol et (Nişangah rengi için)
         NisangahKontrol();
 
-        // 2. Ateş etme kontrolü
+        if (yenidenDolduruyor)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            if (mevcutMermi < sarjorKapasitesi)
+            {
+                StartCoroutine(ReloadYap());
+            }
+            return;
+        }
+
         if (Input.GetMouseButtonDown(0) && Time.time >= birSonrakiAtisZamani)
         {
-            birSonrakiAtisZamani = Time.time + atisAraligi;
-            AtesEt();
+            if (mevcutMermi > 0)
+            {
+                birSonrakiAtisZamani = Time.time + atisAraligi;
+                AtesEt();
+            }
+            else
+            {
+                Debug.Log("Mermi bitti! Reload yap.");
+            }
         }
     }
 
     void NisangahKontrol()
     {
-        // Nişangah atanmamışsa oyun çökmesin diye güvenlik önlemi
-        if (nisangahGorseli == null) return;
+        if (nisangahGorseli == null || oyuncuKamerasi == null)
+            return;
 
+        Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         RaycastHit hit;
-        // Kameradan ileriye doğru sürekli bir radar ışını yolluyoruz
-        if (Physics.Raycast(oyuncuKamerasi.transform.position, oyuncuKamerasi.transform.forward, out hit, menzil))
+
+        if (Physics.Raycast(ray, out hit, menzil))
         {
-            // Baktığımız şeyin üzerinde 'ZombiCan' kodu var mı?
-            ZombiCan bakilanZombi = hit.transform.GetComponent<ZombiCan>();
+            ZombiCan bakilanZombi = hit.transform.GetComponentInParent<ZombiCan>();
 
             if (bakilanZombi != null)
-            {
-                // Zombiye bakıyoruz! Rengi kırmızı yap.
                 nisangahGorseli.color = zombiRengi;
-            }
             else
-            {
-                // Zombi dışında bir şeye (duvar, yol) bakıyoruz. Beyaz yap.
                 nisangahGorseli.color = normalRenk;
-            }
         }
         else
         {
-            // Mermi menzilinde hiçbir şey yok (Gökyüzüne bakıyoruz). Beyaz yap.
             nisangahGorseli.color = normalRenk;
         }
     }
 
     void AtesEt()
     {
-        // ... (Eski Ateş etme, Ses, Efekt ve Zombiye Hasar verme kodlarımız burada aynı şekilde duruyor)
+        if (oyuncuKamerasi == null)
+            return;
+
+        mevcutMermi--;
+        MermiUIGuncelle();
 
         if (namluAtesi != null)
-        {
-            namluAtesi.Stop();
             namluAtesi.Play();
-        }
 
         if (silahSesi != null)
         {
+            silahSesi.Stop();
             silahSesi.Play();
         }
 
+        Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         RaycastHit hit;
-        if (Physics.Raycast(oyuncuKamerasi.transform.position, oyuncuKamerasi.transform.forward, out hit, menzil))
+
+        if (Physics.Raycast(ray, out hit, menzil))
         {
-            ZombiCan vurulanZombi = hit.transform.GetComponent<ZombiCan>();
+            ZombiCan vurulanZombi = hit.transform.GetComponentInParent<ZombiCan>();
+
             if (vurulanZombi != null)
             {
-                vurulanZombi.HasarAl(hasar);
+                float uygulanacakHasar = hasar;
+
+                if (hit.collider.CompareTag("Head"))
+                {
+                    uygulanacakHasar *= kafaHasarCarpani;
+                }
+
+                vurulanZombi.HasarAl(uygulanacakHasar, hit.point);
+
+                if (kanEfekti != null)
+                {
+                    Instantiate(kanEfekti, hit.point, Quaternion.LookRotation(hit.normal));
+                }
+
+                if (!nisangahEfektiCalisiyor && nisangahGorseli != null)
+                {
+                    StartCoroutine(NisangahVurusEfekti());
+                }
             }
         }
 
-        // Silah sekme kodu tetikleyicisi
-        SilahHissiyat hissiyat = GetComponent<SilahHissiyat>();
         if (hissiyat != null)
         {
             hissiyat.GeriTepmeUygula();
         }
+    }
+
+    IEnumerator ReloadYap()
+    {
+        if (yenidenDolduruyor)
+            yield break;
+
+        if (sagdakiMermi <= 0)
+        {
+            Debug.Log("Mermi kalmadı!");
+            yield break;
+        }
+
+        yenidenDolduruyor = true;
+
+        yield return new WaitForSeconds(reloadSuresi);
+
+        sagdakiMermi--; // 👈 SAĞDAN 1 AZAL
+        mevcutMermi = sarjorKapasitesi;
+
+        yenidenDolduruyor = false;
+
+        MermiUIGuncelle();
+    }
+
+    void MermiUIGuncelle()
+    {
+        if (mermiYazisi != null)
+        {
+            mermiYazisi.text = mevcutMermi + " / " + sagdakiMermi;
+        }
+    }
+
+    IEnumerator NisangahVurusEfekti()
+    {
+        nisangahEfektiCalisiyor = true;
+
+        nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale * vurusBuyumeMiktari;
+        yield return new WaitForSeconds(vurusEfektSuresi);
+        nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale;
+
+        nisangahEfektiCalisiyor = false;
     }
 }

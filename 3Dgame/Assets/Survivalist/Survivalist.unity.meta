@@ -1,14 +1,7 @@
 fileFormatVersion: 2
-guid: e9017d5f96b9f09489b4b37e1d6eb914
+guid: f5c94e4b95e27584ab1581f056d756e1
 DefaultImporter:
   externalObjects: {}
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 181470
-  packageName: Survivalist character
-  packageVersion: 1.2
-  assetPath: Assets/Survivalist/Survivalist.unity
-  uploadId: 762486
