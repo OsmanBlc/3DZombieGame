@@ -13,6 +13,7 @@ public class SilahAtes : MonoBehaviour
     private float birSonrakiAtisZamani = 0f;
 
     [Header("Mermi Sistemi")]
+    public int sagdakiMermi = 15;
     public int sarjorKapasitesi = 15;
     public int mevcutMermi;
     public float reloadSuresi = 2f;
@@ -169,23 +170,29 @@ public class SilahAtes : MonoBehaviour
         if (yenidenDolduruyor)
             yield break;
 
+        if (sagdakiMermi <= 0)
+        {
+            Debug.Log("Mermi kalmadı!");
+            yield break;
+        }
+
         yenidenDolduruyor = true;
-        Debug.Log("Reload başladı...");
 
         yield return new WaitForSeconds(reloadSuresi);
 
+        sagdakiMermi--;
         mevcutMermi = sarjorKapasitesi;
+
         yenidenDolduruyor = false;
 
         MermiUIGuncelle();
-        Debug.Log("Reload tamamlandı.");
     }
 
     void MermiUIGuncelle()
     {
         if (mermiYazisi != null)
         {
-            mermiYazisi.text = mevcutMermi + " / " + sarjorKapasitesi;
+            mermiYazisi.text = mevcutMermi + " / " + sagdakiMermi;
         }
     }
 
