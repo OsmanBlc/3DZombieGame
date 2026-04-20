@@ -5,12 +5,20 @@ using TMPro;
 
 public class SilahAtes : MonoBehaviour
 {
+    // Silah türlerini belirliyoruz
+    public enum SilahTuru { Tekli, Otomatik, Pompali }
+
     [Header("Silah İstatistikleri")]
+    public SilahTuru silahTuru = SilahTuru.Tekli; // Inspector'dan seçeceğiz
     public float hasar = 25f;
     public float kafaHasarCarpani = 2f;
     public float menzil = 100f;
     public float atisAraligi = 0.5f;
     private float birSonrakiAtisZamani = 0f;
+
+    [Header("Pompalı Ayarları (Sadece Pompali seçiliyse)")]
+    public int pompaliMermiSayisi = 8; // Tek seferde çıkacak mermi sayısı
+    public float pompaliSacilmaAcisi = 0.05f; // Mermilerin dağılma oranı
 
     [Header("Mermi Sistemi")]
     public int sagdakiMermi = 15;
@@ -50,7 +58,6 @@ public class SilahAtes : MonoBehaviour
             silahSesi = GetComponent<AudioSource>();
 
         hissiyat = GetComponent<SilahHissiyat>();
-
         mevcutMermi = sarjorKapasitesi;
 
         if (nisangahGorseli != null)
@@ -75,7 +82,22 @@ public class SilahAtes : MonoBehaviour
             return;
         }
 
-        if (Input.GetMouseButtonDown(0) && Time.time >= birSonrakiAtisZamani)
+        // Ateş Etme Girdisini Kontrol Et (Otomatik vs Tekli)
+        bool atesBasildi = false;
+
+        if (silahTuru == SilahTuru.Otomatik)
+        {
+            // SMG için: Tuşa basılı tutulduğu sürece (GetMouseButton)
+            atesBasildi = Input.GetMouseButton(0);
+        }
+        else
+        {
+            // Tabanca ve Pompalı için: Tuşa her basışta 1 kere (GetMouseButtonDown)
+            atesBasildi = Input.GetMouseButtonDown(0);
+        }
+
+        // Eğer ateş edilmek isteniyorsa ve zamanı geldiyse
+        if (atesBasildi && Time.time >= birSonrakiAtisZamani)
         {
             if (mevcutMermi > 0)
             {
@@ -129,7 +151,39 @@ public class SilahAtes : MonoBehaviour
             silahSesi.Play();
         }
 
-        Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        // Pompalı ise çoklu mermi yolla, değilse tek mermi
+        if (silahTuru == SilahTuru.Pompali)
+        {
+            for (int i = 0; i < pompaliMermiSayisi; i++)
+            {
+                MermiYolla(true);
+            }
+        }
+        else
+        {
+            MermiYolla(false);
+        }
+
+        if (hissiyat != null)
+        {
+            hissiyat.GeriTepmeUygula();
+        }
+    }
+
+    // Mermiyi Raycast ile gönderme fonksiyonu (Temiz tutmak için ayrıldı)
+    void MermiYolla(bool sacilmaVar)
+    {
+        Vector3 rayYonu = oyuncuKamerasi.transform.forward;
+
+        // Eğer pompalıysa, mermi yönüne rastgele bir saçılma (spread) ekle
+        if (sacilmaVar)
+        {
+            rayYonu.x += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+            rayYonu.y += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+            rayYonu.z += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+        }
+
+        Ray ray = new Ray(oyuncuKamerasi.transform.position, rayYonu);
         RaycastHit hit;
 
         if (Physics.Raycast(ray, out hit, menzil))
@@ -158,11 +212,6 @@ public class SilahAtes : MonoBehaviour
                 }
             }
         }
-
-        if (hissiyat != null)
-        {
-            hissiyat.GeriTepmeUygula();
-        }
     }
 
     IEnumerator ReloadYap()
@@ -177,12 +226,10 @@ public class SilahAtes : MonoBehaviour
         }
 
         yenidenDolduruyor = true;
-
         yield return new WaitForSeconds(reloadSuresi);
 
         sagdakiMermi--;
         mevcutMermi = sarjorKapasitesi;
-
         yenidenDolduruyor = false;
 
         MermiUIGuncelle();
@@ -199,11 +246,9 @@ public class SilahAtes : MonoBehaviour
     IEnumerator NisangahVurusEfekti()
     {
         nisangahEfektiCalisiyor = true;
-
         nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale * vurusBuyumeMiktari;
         yield return new WaitForSeconds(vurusEfektSuresi);
         nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale;
-
         nisangahEfektiCalisiyor = false;
     }
 }
