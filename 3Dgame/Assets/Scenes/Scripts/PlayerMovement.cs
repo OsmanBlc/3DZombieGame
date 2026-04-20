@@ -5,8 +5,11 @@ public class PlayerMovement : MonoBehaviour
     [Header("Movement")]
     public float walkSpeed = 5f;
     public float runSpeed = 8f;
-    public float jumpForce = 7f;
+    public float jumpForce = 5f;
     public float airControlMultiplier = 0.5f;
+
+    [Header("Gravity")]
+    public float fallMultiplier = 2.5f; // Düşüş hissini toklaştıran çarpan
 
     [Header("Mouse Look")]
     public float mouseSensitivity = 150f;
@@ -59,6 +62,7 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         MovePlayer();
+        ApplyExtraGravity(); // Düşüşü hızlandıran fonksiyonu buraya ekledik
     }
 
     void GroundCheck()
@@ -86,6 +90,15 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 velocity = move * currentSpeed * controlMultiplier;
         rb.linearVelocity = new Vector3(velocity.x, rb.linearVelocity.y, velocity.z);
+    }
+
+    void ApplyExtraGravity()
+    {
+        // Eğer karakter aşağı doğru düşüyorsa ekstra yerçekimi uygula
+        if (rb.linearVelocity.y < 0)
+        {
+            rb.linearVelocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+        }
     }
 
     void LookAround()
