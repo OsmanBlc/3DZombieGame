@@ -3,18 +3,18 @@ using UnityEngine;
 public class SilahHissiyat : MonoBehaviour
 {
     [Header("1. Kamera Çevirme (Sway)")]
-    public float swayMiktari = 0.02f;
-    public float maxSway = 0.05f;
-    public float swayHizi = 8f;
+    public float swayMiktari = 0.015f;
+    public float maxSway = 0.03f;
+    public float swayHizi = 10f;
 
     [Header("2. Yürüme (Bobbing)")]
-    public float yurumeHizi = 12f;
-    public float yurumeMiktari = 0.015f;
+    public float yurumeHizi = 10f;
+    public float yurumeMiktari = 0.01f;
 
     [Header("3. Silah Sekmesi (Recoil)")]
-    public float geriyeSekme = 0.15f;
-    public float yukariSekme = 3f;
-    public float sekmeDonusHizi = 8f;
+    public float geriyeSekme = 0.04f;
+    public float yukariSekme = 1.2f;
+    public float sekmeDonusHizi = 14f;
 
     private Vector3 baslangicPozisyonu;
     private Quaternion baslangicRotasyonu;
@@ -32,7 +32,6 @@ public class SilahHissiyat : MonoBehaviour
 
     void Update()
     {
-        // 1. SWAY
         float fareX = -Input.GetAxis("Mouse X") * swayMiktari;
         float fareY = -Input.GetAxis("Mouse Y") * swayMiktari;
 
@@ -41,7 +40,6 @@ public class SilahHissiyat : MonoBehaviour
 
         Vector3 swayPozisyonu = new Vector3(fareX, fareY, 0f);
 
-        // 2. BOBBING
         float yatay = Input.GetAxis("Horizontal");
         float dikey = Input.GetAxis("Vertical");
 
@@ -60,14 +58,11 @@ public class SilahHissiyat : MonoBehaviour
         else
         {
             bobTimer = 0f;
-            bobPozisyonu = Vector3.Lerp(bobPozisyonu, Vector3.zero, Time.deltaTime * swayHizi);
         }
 
-        // 3. RECOIL TOPARLAMA
         guncelSekmePoz = Vector3.Lerp(guncelSekmePoz, Vector3.zero, Time.deltaTime * sekmeDonusHizi);
         guncelSekmeRot = Quaternion.Slerp(guncelSekmeRot, Quaternion.identity, Time.deltaTime * sekmeDonusHizi);
 
-        // HEPSİNİ BİRLEŞTİR
         Vector3 hedefPozisyon = baslangicPozisyonu + swayPozisyonu + bobPozisyonu + guncelSekmePoz;
         Quaternion hedefRotasyon = baslangicRotasyonu * guncelSekmeRot;
 
@@ -78,6 +73,6 @@ public class SilahHissiyat : MonoBehaviour
     public void GeriTepmeUygula()
     {
         guncelSekmePoz += new Vector3(0f, 0f, -geriyeSekme);
-        guncelSekmeRot *= Quaternion.Euler(-yukariSekme, Random.Range(-1f, 1f), 0f);
+        guncelSekmeRot *= Quaternion.Euler(-yukariSekme, Random.Range(-0.4f, 0.4f), 0f);
     }
 }

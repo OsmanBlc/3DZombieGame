@@ -5,11 +5,10 @@ using TMPro;
 
 public class SilahAtes : MonoBehaviour
 {
-    // Silah türlerini belirliyoruz
     public enum SilahTuru { Tekli, Otomatik, Pompali }
 
     [Header("Silah İstatistikleri")]
-    public SilahTuru silahTuru = SilahTuru.Tekli; // Inspector'dan seçeceğiz
+    public SilahTuru silahTuru = SilahTuru.Tekli;
     public float hasar = 25f;
     public float kafaHasarCarpani = 2f;
     public float menzil = 100f;
@@ -17,13 +16,13 @@ public class SilahAtes : MonoBehaviour
     private float birSonrakiAtisZamani = 0f;
 
     [Header("Pompalı Ayarları (Sadece Pompali seçiliyse)")]
-    public int pompaliMermiSayisi = 8; // Tek seferde çıkacak mermi sayısı
-    public float pompaliSacilmaAcisi = 0.05f; // Mermilerin dağılma oranı
+    public int pompaliMermiSayisi = 8;
+    public float pompaliSacilmaAcisi = 0.05f;
 
     [Header("Mermi Sistemi")]
-    public int sagdakiMermi = 15;
     public int sarjorKapasitesi = 15;
     public int mevcutMermi;
+    public int yedekMermi = 60;
     public float reloadSuresi = 2f;
     private bool yenidenDolduruyor = false;
 
@@ -58,11 +57,18 @@ public class SilahAtes : MonoBehaviour
             silahSesi = GetComponent<AudioSource>();
 
         hissiyat = GetComponent<SilahHissiyat>();
-        mevcutMermi = sarjorKapasitesi;
+
+        if (mevcutMermi <= 0)
+            mevcutMermi = sarjorKapasitesi;
 
         if (nisangahGorseli != null)
             nisangahOrijinalScale = nisangahGorseli.rectTransform.localScale;
 
+        MermiUIGuncelle();
+    }
+
+    void OnEnable()
+    {
         MermiUIGuncelle();
     }
 
@@ -75,28 +81,24 @@ public class SilahAtes : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.R))
         {
-            if (mevcutMermi < sarjorKapasitesi)
+            if (mevcutMermi < sarjorKapasitesi && yedekMermi > 0)
             {
                 StartCoroutine(ReloadYap());
             }
             return;
         }
 
-        // Ateş Etme Girdisini Kontrol Et (Otomatik vs Tekli)
         bool atesBasildi = false;
 
         if (silahTuru == SilahTuru.Otomatik)
         {
-            // SMG için: Tuşa basılı tutulduğu sürece (GetMouseButton)
             atesBasildi = Input.GetMouseButton(0);
         }
         else
         {
-            // Tabanca ve Pompalı için: Tuşa her basışta 1 kere (GetMouseButtonDown)
             atesBasildi = Input.GetMouseButtonDown(0);
         }
 
-        // Eğer ateş edilmek isteniyorsa ve zamanı geldiyse
         if (atesBasildi && Time.time >= birSonrakiAtisZamani)
         {
             if (mevcutMermi > 0)
@@ -151,7 +153,6 @@ public class SilahAtes : MonoBehaviour
             silahSesi.Play();
         }
 
-        // Pompalı ise çoklu mermi yolla, değilse tek mermi
         if (silahTuru == SilahTuru.Pompali)
         {
             for (int i = 0; i < pompaliMermiSayisi; i++)
@@ -170,12 +171,10 @@ public class SilahAtes : MonoBehaviour
         }
     }
 
-    // Mermiyi Raycast ile gönderme fonksiyonu (Temiz tutmak için ayrıldı)
     void MermiYolla(bool sacilmaVar)
     {
         Vector3 rayYonu = oyuncuKamerasi.transform.forward;
 
-        // Eğer pompalıysa, mermi yönüne rastgele bir saçılma (spread) ekle
         if (sacilmaVar)
         {
             rayYonu.x += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
@@ -219,19 +218,22 @@ public class SilahAtes : MonoBehaviour
         if (yenidenDolduruyor)
             yield break;
 
-        if (sagdakiMermi <= 0)
+        if (yedekMermi <= 0)
         {
-            Debug.Log("Mermi kalmadı!");
+            Debug.Log("Yedek mermi kalmadı!");
             yield break;
         }
 
         yenidenDolduruyor = true;
         yield return new WaitForSeconds(reloadSuresi);
 
-        sagdakiMermi--;
-        mevcutMermi = sarjorKapasitesi;
-        yenidenDolduruyor = false;
+        int eksikMermi = sarjorKapasitesi - mevcutMermi;
+        int alinacakMermi = Mathf.Min(eksikMermi, yedekMermi);
 
+        mevcutMermi += alinacakMermi;
+        yedekMermi -= alinacakMermi;
+
+        yenidenDolduruyor = false;
         MermiUIGuncelle();
     }
 
@@ -239,7 +241,7 @@ public class SilahAtes : MonoBehaviour
     {
         if (mermiYazisi != null)
         {
-            mermiYazisi.text = mevcutMermi + " / " + sagdakiMermi;
+            mermiYazisi.text = mevcutMermi + " / " + yedekMermi;
         }
     }
 
