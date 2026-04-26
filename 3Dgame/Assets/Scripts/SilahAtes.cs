@@ -13,6 +13,7 @@ public class SilahAtes : MonoBehaviour
     public float kafaHasarCarpani = 2f;
     public float menzil = 100f;
     public float atisAraligi = 0.5f;
+    public WeaponBlowback blowbackScript;
     private float birSonrakiAtisZamani = 0f;
 
     [Header("Pompalı Ayarları (Sadece Pompali seçiliyse)")]
@@ -153,6 +154,11 @@ public class SilahAtes : MonoBehaviour
             silahSesi.Play();
         }
 
+        if (blowbackScript != null)
+        {
+            blowbackScript.ApplyBlowback();
+        }
+
         if (silahTuru == SilahTuru.Pompali)
         {
             for (int i = 0; i < pompaliMermiSayisi; i++)
@@ -254,3 +260,4 @@ public class SilahAtes : MonoBehaviour
         nisangahEfektiCalisiyor = false;
     }
 }
+
