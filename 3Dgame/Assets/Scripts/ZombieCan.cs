@@ -8,7 +8,13 @@ public class ZombiCan : MonoBehaviour
     public Animator animator;
     public float vuruluncaGeriGitme = 0.18f;
 
+    [Header("Ses")]
+    public AudioClip zombieHurtClip;
+    public float zombieHurtVolume = 0.8f;
+    public float zombieHurtCooldown = 0.2f;
+
     private bool olduMu = false;
+    private float sonrakiHurtSesZamani = 0f;
 
     void Start()
     {
@@ -23,6 +29,7 @@ public class ZombiCan : MonoBehaviour
         if (olduMu) return;
 
         mevcutCan -= hasarMiktari;
+        ZombieHurtSesiCal();
 
         // Hafif vurulma tepkisi
         Vector3 geriYon = (transform.position - vurulmaNoktasi).normalized;
@@ -54,5 +61,14 @@ public class ZombiCan : MonoBehaviour
             follow.enabled = false;
 
         Destroy(gameObject, 2.5f);
+    }
+
+    void ZombieHurtSesiCal()
+    {
+        if (zombieHurtClip == null || Time.time < sonrakiHurtSesZamani)
+            return;
+
+        AudioSource.PlayClipAtPoint(zombieHurtClip, transform.position, zombieHurtVolume * SettingsManager.SfxVolume);
+        sonrakiHurtSesZamani = Time.time + zombieHurtCooldown;
     }
 }

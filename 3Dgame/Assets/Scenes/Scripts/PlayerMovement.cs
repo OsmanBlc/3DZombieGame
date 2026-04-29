@@ -24,6 +24,15 @@ public class PlayerMovement : MonoBehaviour
     public float crouchSpeed = 2.5f;
     public float crouchHeight = 1f;
 
+    [Header("Footstep")]
+    public AudioClip footstepClip;
+    public AudioSource footstepSource;
+    public float footstepVolume = 0.55f;
+    public float walkStepInterval = 0.45f;
+    public float runStepInterval = 0.32f;
+    public float crouchStepInterval = 0.6f;
+    public float footstepMinSpeed = 0.2f;
+
     private Rigidbody rb;
     private CapsuleCollider capsuleCollider;
 
@@ -33,6 +42,7 @@ public class PlayerMovement : MonoBehaviour
     private float currentSpeed;
     private float normalHeight;
     private Vector3 normalCenter;
+    private float nextFootstepTime = 0f;
 
     void Start()
     {
@@ -49,6 +59,13 @@ public class PlayerMovement : MonoBehaviour
             normalHeight = capsuleCollider.height;
             normalCenter = capsuleCollider.center;
         }
+
+        if (footstepSource == null)
+        {
+            footstepSource = gameObject.AddComponent<AudioSource>();
+            footstepSource.playOnAwake = false;
+            footstepSource.spatialBlend = 0f;
+        }
     }
 
     void Update()
@@ -62,6 +79,7 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         MovePlayer();
+        HandleFootsteps();
         ApplyExtraGravity(); // Düşüşü hızlandıran fonksiyonu buraya ekledik
     }
 
@@ -90,6 +108,33 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 velocity = move * currentSpeed * controlMultiplier;
         rb.linearVelocity = new Vector3(velocity.x, rb.linearVelocity.y, velocity.z);
+    }
+
+    void HandleFootsteps()
+    {
+        if (footstepClip == null || footstepSource == null || !isGrounded)
+            return;
+
+        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+        if (horizontalVelocity.magnitude < footstepMinSpeed)
+        {
+            nextFootstepTime = 0f;
+            return;
+        }
+
+        if (Time.time < nextFootstepTime)
+            return;
+
+        footstepSource.pitch = Random.Range(0.92f, 1.08f);
+        footstepSource.PlayOneShot(footstepClip, footstepVolume * SettingsManager.SfxVolume);
+
+        if (isCrouching)
+            nextFootstepTime = Time.time + crouchStepInterval;
+        else if (Input.GetKey(KeyCode.LeftShift))
+            nextFootstepTime = Time.time + runStepInterval;
+        else
+            nextFootstepTime = Time.time + walkStepInterval;
     }
 
     void ApplyExtraGravity()

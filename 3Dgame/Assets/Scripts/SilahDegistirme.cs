@@ -18,26 +18,51 @@ public class SilahDegistirici : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+        {
+            SilahSec(0);
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+        {
+            SilahSec(1);
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
+        {
+            SilahSec(2);
+            return;
+        }
+
         float scroll = Input.GetAxis("Mouse ScrollWheel");
 
         if (scroll > 0f)
         {
-            aktifSilahIndex++;
-
-            if (aktifSilahIndex >= silahlar.Length)
-                aktifSilahIndex = 0;
-
-            SilahlariGuncelle();
+            SilahSec(aktifSilahIndex + 1);
         }
         else if (scroll < 0f)
         {
-            aktifSilahIndex--;
-
-            if (aktifSilahIndex < 0)
-                aktifSilahIndex = silahlar.Length - 1;
-
-            SilahlariGuncelle();
+            SilahSec(aktifSilahIndex - 1);
         }
+    }
+
+    void SilahSec(int yeniSilahIndex)
+    {
+        if (silahlar == null || silahlar.Length == 0)
+            return;
+
+        if (yeniSilahIndex >= silahlar.Length)
+            yeniSilahIndex = 0;
+        else if (yeniSilahIndex < 0)
+            yeniSilahIndex = silahlar.Length - 1;
+
+        if (aktifSilahIndex == yeniSilahIndex)
+            return;
+
+        aktifSilahIndex = yeniSilahIndex;
+        SilahlariGuncelle();
     }
 
     void SilahlariGuncelle()
@@ -52,6 +77,11 @@ public class SilahDegistirici : MonoBehaviour
                 silahlar[i].SetActive(i == aktifSilahIndex);
         }
 
+        SilahIkonunuGuncelle();
+    }
+
+    void SilahIkonunuGuncelle()
+    {
         // UI ikonunu değiştir
         if (silahIkonu != null && silahSprite != null && silahSprite.Length > aktifSilahIndex)
         {

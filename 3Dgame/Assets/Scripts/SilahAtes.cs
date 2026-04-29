@@ -25,6 +25,11 @@ public class SilahAtes : MonoBehaviour
     public int mevcutMermi;
     public int yedekMermi = 60;
     public float reloadSuresi = 2f;
+    public AudioClip reloadSesi;
+    public float reloadSesSeviyesi = 0.8f;
+    public AudioClip mermiYokSesi;
+    public float mermiYokSesSeviyesi = 0.8f;
+    public float mermiYokSesAraligi = 0.25f;
     private bool yenidenDolduruyor = false;
 
     [Header("Referanslar")]
@@ -34,20 +39,33 @@ public class SilahAtes : MonoBehaviour
 
     [Header("UI")]
     public TMP_Text mermiYazisi;
+    public Color normalMermiRengi = Color.white;
+    public Color azMermiRengi = new Color(1f, 0.78f, 0.12f);
+    public Color kritikMermiRengi = new Color(1f, 0.12f, 0.08f);
+    public int azMermiSiniri = 5;
+    public int kritikMermiSiniri = 2;
 
     [Header("Nişangah Ayarları")]
     public Image nisangahGorseli;
     public Color normalRenk = Color.white;
     public Color zombiRengi = Color.red;
-    public float vurusBuyumeMiktari = 1.3f;
-    public float vurusEfektSuresi = 0.08f;
+    public Color vurusRengi = new Color(1f, 0.95f, 0.25f);
+    public Color headshotRengi = new Color(1f, 0.15f, 0.08f);
+    public float vurusBuyumeMiktari = 1.65f;
+    public float headshotBuyumeCarpani = 1.25f;
+    public float vurusEfektSuresi = 0.12f;
+    public AudioClip vurusSesi;
+    public AudioClip headshotSesi;
+    public float vurusSesSeviyesi = 0.65f;
 
     [Header("Efektler")]
     public GameObject kanEfekti;
 
     private SilahHissiyat hissiyat;
     private Vector3 nisangahOrijinalScale;
+    private Coroutine nisangahEfektiCoroutine;
     private bool nisangahEfektiCalisiyor = false;
+    private float sonrakiMermiYokSesiZamani = 0f;
 
     void Start()
     {
@@ -110,13 +128,14 @@ public class SilahAtes : MonoBehaviour
             else
             {
                 Debug.Log("Mermi bitti! Reload yap.");
+                MermiYokSesiCal();
             }
         }
     }
 
     void NisangahKontrol()
     {
-        if (nisangahGorseli == null || oyuncuKamerasi == null)
+        if (nisangahGorseli == null || oyuncuKamerasi == null || nisangahEfektiCalisiyor)
             return;
 
         Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -173,7 +192,7 @@ public class SilahAtes : MonoBehaviour
 
         if (hissiyat != null)
         {
-            hissiyat.GeriTepmeUygula();
+            hissiyat.GeriTepmeUygula(silahTuru == SilahTuru.Otomatik);
         }
     }
 
@@ -199,7 +218,9 @@ public class SilahAtes : MonoBehaviour
             {
                 float uygulanacakHasar = hasar;
 
-                if (hit.collider.CompareTag("Head"))
+                bool kafaVurusu = hit.collider.CompareTag("Head");
+
+                if (kafaVurusu)
                 {
                     uygulanacakHasar *= kafaHasarCarpani;
                 }
@@ -211,9 +232,9 @@ public class SilahAtes : MonoBehaviour
                     Instantiate(kanEfekti, hit.point, Quaternion.LookRotation(hit.normal));
                 }
 
-                if (!nisangahEfektiCalisiyor && nisangahGorseli != null)
+                if (nisangahGorseli != null)
                 {
-                    StartCoroutine(NisangahVurusEfekti());
+                    HitMarkerGoster(kafaVurusu);
                 }
             }
         }
@@ -231,6 +252,7 @@ public class SilahAtes : MonoBehaviour
         }
 
         yenidenDolduruyor = true;
+        ReloadSesiCal();
         yield return new WaitForSeconds(reloadSuresi);
 
         int eksikMermi = sarjorKapasitesi - mevcutMermi;
@@ -243,21 +265,82 @@ public class SilahAtes : MonoBehaviour
         MermiUIGuncelle();
     }
 
+    void ReloadSesiCal()
+    {
+        if (reloadSesi == null)
+            return;
+
+        Vector3 sesPozisyonu = oyuncuKamerasi != null ? oyuncuKamerasi.transform.position : transform.position;
+        AudioSource.PlayClipAtPoint(reloadSesi, sesPozisyonu, reloadSesSeviyesi * SettingsManager.SfxVolume);
+    }
+
+    void MermiYokSesiCal()
+    {
+        if (mermiYokSesi == null || Time.time < sonrakiMermiYokSesiZamani)
+            return;
+
+        Vector3 sesPozisyonu = oyuncuKamerasi != null ? oyuncuKamerasi.transform.position : transform.position;
+        AudioSource.PlayClipAtPoint(mermiYokSesi, sesPozisyonu, mermiYokSesSeviyesi * SettingsManager.SfxVolume);
+        sonrakiMermiYokSesiZamani = Time.time + mermiYokSesAraligi;
+    }
+
     void MermiUIGuncelle()
     {
         if (mermiYazisi != null)
         {
             mermiYazisi.text = mevcutMermi + " / " + yedekMermi;
+
+            if (mevcutMermi <= kritikMermiSiniri)
+                mermiYazisi.color = kritikMermiRengi;
+            else if (mevcutMermi <= azMermiSiniri)
+                mermiYazisi.color = azMermiRengi;
+            else
+                mermiYazisi.color = normalMermiRengi;
         }
     }
 
-    IEnumerator NisangahVurusEfekti()
+    void HitMarkerGoster(bool kafaVurusu)
+    {
+        if (nisangahEfektiCoroutine != null)
+            StopCoroutine(nisangahEfektiCoroutine);
+
+        AudioClip calacakSes = kafaVurusu && headshotSesi != null ? headshotSesi : vurusSesi;
+
+        if (calacakSes != null && oyuncuKamerasi != null)
+            AudioSource.PlayClipAtPoint(calacakSes, oyuncuKamerasi.transform.position, vurusSesSeviyesi * SettingsManager.SfxVolume);
+
+        nisangahEfektiCoroutine = StartCoroutine(NisangahVurusEfekti(kafaVurusu));
+    }
+
+    IEnumerator NisangahVurusEfekti(bool kafaVurusu)
     {
         nisangahEfektiCalisiyor = true;
-        nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale * vurusBuyumeMiktari;
-        yield return new WaitForSeconds(vurusEfektSuresi);
+        Color baslangicRengi = nisangahGorseli.color;
+        Color hedefRenk = kafaVurusu ? headshotRengi : vurusRengi;
+        float efektSuresi = Mathf.Max(vurusEfektSuresi, 0.08f);
+        float buyumeMiktari = Mathf.Max(vurusBuyumeMiktari, 1.45f);
+
+        if (kafaVurusu)
+            buyumeMiktari *= Mathf.Max(headshotBuyumeCarpani, 1f);
+
+        float gecenSure = 0f;
+
+        while (gecenSure < efektSuresi)
+        {
+            gecenSure += Time.unscaledDeltaTime;
+            float oran = Mathf.Clamp01(gecenSure / efektSuresi);
+            float vurgu = 1f - oran;
+            float scale = Mathf.Lerp(1f, buyumeMiktari, vurgu);
+
+            nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale * scale;
+            nisangahGorseli.color = Color.Lerp(baslangicRengi, hedefRenk, vurgu);
+
+            yield return null;
+        }
+
         nisangahGorseli.rectTransform.localScale = nisangahOrijinalScale;
+        nisangahGorseli.color = baslangicRengi;
         nisangahEfektiCalisiyor = false;
+        nisangahEfektiCoroutine = null;
     }
 }
-
