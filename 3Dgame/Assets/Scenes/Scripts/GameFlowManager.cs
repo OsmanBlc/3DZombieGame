@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -16,12 +17,18 @@ public class GameFlowManager : MonoBehaviour
     private GameObject pauseMainPanel;
     private GameObject settingsPanel;
     private GameObject gameOverPanel;
+    private GameObject levelCompletePanel;
+    private TextMeshProUGUI yildizYazisi;
+    private TextMeshProUGUI sonucYazisi;
+    private TextMeshProUGUI sureYazisi;
     private Slider musicSlider;
     private Slider sfxSlider;
+    private Slider sensitivitySlider;
     private TMP_Dropdown graphicsDropdown;
 
     private bool isPaused;
     private bool isGameOver;
+    private bool isLevelComplete;
     private bool gameplaySceneActive;
     private CursorLockMode previousLockMode;
     private bool previousCursorVisible;
@@ -40,6 +47,11 @@ public class GameFlowManager : MonoBehaviour
     public static void ShowGameOver()
     {
         EnsureInstance().OpenGameOver();
+    }
+
+    public static void ShowLevelComplete(float gecenSure, float ucYildizSure, float ikiYildizSure)
+    {
+        EnsureInstance().OpenLevelComplete(gecenSure, ucYildizSure, ikiYildizSure);
     }
 
     private static GameFlowManager EnsureInstance()
@@ -72,7 +84,7 @@ public class GameFlowManager : MonoBehaviour
 
     private void Update()
     {
-        if (!gameplaySceneActive || isGameOver)
+        if (!gameplaySceneActive || isGameOver || isLevelComplete)
             return;
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -91,6 +103,7 @@ public class GameFlowManager : MonoBehaviour
         Time.timeScale = 1f;
         isPaused = false;
         isGameOver = false;
+        isLevelComplete = false;
         gameplaySceneActive = FindObjectOfType<PlayerHealth>() != null;
 
         if (!gameplaySceneActive)
@@ -112,6 +125,14 @@ public class GameFlowManager : MonoBehaviour
         if (canvas != null)
             return;
 
+        if (FindObjectOfType<EventSystem>() == null)
+        {
+            GameObject esObject = new GameObject("EventSystem");
+            DontDestroyOnLoad(esObject);
+            esObject.AddComponent<EventSystem>();
+            esObject.AddComponent<StandaloneInputModule>();
+        }
+
         GameObject canvasObject = new GameObject("Game Flow Canvas");
         DontDestroyOnLoad(canvasObject);
 
@@ -132,16 +153,29 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(pauseMainPanel.transform, "Ayarlar", OpenSettings);
         CreateButton(pauseMainPanel.transform, "Ana Menu", LoadMainMenu);
 
-        settingsPanel = CreateDialog(pausePanel.transform, "SettingsPanel", "AYARLAR");
+        settingsPanel = CreateDialog(pausePanel.transform, "SettingsPanel", "AYARLAR", 560f);
         CreateSlider(settingsPanel.transform, "Muzik", PlayerPrefs.GetFloat("MusicVolume", 1f), SetMusicVolume, out musicSlider);
         CreateSlider(settingsPanel.transform, "SFX", PlayerPrefs.GetFloat("SfxVolume", SettingsManager.SfxVolume), SetSfxVolume, out sfxSlider);
+        float sensNorm = Mathf.InverseLerp(30f, 300f, PlayerPrefs.GetFloat("MouseSensitivity", 150f));
+        CreateSlider(settingsPanel.transform, "Hassasiyet", sensNorm, SetSensitivity, out sensitivitySlider);
         CreateGraphicsDropdown(settingsPanel.transform);
         CreateButton(settingsPanel.transform, "Geri", ShowPauseMain);
 
         gameOverPanel = CreateOverlay("GameOverPanel");
-        GameObject gameOverDialog = CreateDialog(gameOverPanel.transform, "GameOverDialog", "OLDUN");
+        GameObject gameOverDialog = CreateDialog(gameOverPanel.transform, "GameOverDialog", "GAME OVER");
+        CreateText(gameOverDialog.transform, "Zombiler seni yedi...", 20, FontStyles.Italic, 32f);
         CreateButton(gameOverDialog.transform, "Tekrar Dene", RestartLevel);
         CreateButton(gameOverDialog.transform, "Ana Menu", LoadMainMenu);
+
+        levelCompletePanel = CreateOverlay("LevelCompletePanel");
+        GameObject lcDialog = CreateDialog(levelCompletePanel.transform, "LevelCompleteDialog", "BÖLÜM BİTTİ", 540f);
+        yildizYazisi = CreateText(lcDialog.transform, "★★★", 64, FontStyles.Bold, 88f);
+        yildizYazisi.color = new Color(1f, 0.85f, 0.1f, 1f);
+        sonucYazisi = CreateText(lcDialog.transform, "", 22, FontStyles.Italic, 36f);
+        sureYazisi = CreateText(lcDialog.transform, "", 20, FontStyles.Normal, 30f);
+        sureYazisi.color = new Color(0.7f, 0.8f, 0.9f, 1f);
+        CreateButton(lcDialog.transform, "Sonraki Bölüm", LoadNextLevel);
+        CreateButton(lcDialog.transform, "Ana Menu", LoadMainMenu);
 
         HidePanels();
     }
@@ -162,7 +196,7 @@ public class GameFlowManager : MonoBehaviour
         return overlay;
     }
 
-    private GameObject CreateDialog(Transform parent, string objectName, string title)
+    private GameObject CreateDialog(Transform parent, string objectName, string title, float height = 420f)
     {
         GameObject dialog = new GameObject(objectName);
         dialog.transform.SetParent(parent, false);
@@ -171,22 +205,32 @@ public class GameFlowManager : MonoBehaviour
         rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
         rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
         rectTransform.pivot = new Vector2(0.5f, 0.5f);
-        rectTransform.sizeDelta = new Vector2(520f, 560f);
+        rectTransform.sizeDelta = new Vector2(520f, height);
 
-        Image background = dialog.AddComponent<Image>();
-        background.color = new Color(0.06f, 0.07f, 0.08f, 0.96f);
+        Image borderImage = dialog.AddComponent<Image>();
+        borderImage.color = new Color(0.80f, 0.07f, 0.05f, 1f);
 
-        VerticalLayoutGroup layout = dialog.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(42, 42, 38, 38);
-        layout.spacing = 18f;
-        layout.childAlignment = TextAnchor.MiddleCenter;
+        GameObject innerPanel = new GameObject("InnerPanel");
+        innerPanel.transform.SetParent(dialog.transform, false);
+        RectTransform innerRect = innerPanel.AddComponent<RectTransform>();
+        innerRect.anchorMin = Vector2.zero;
+        innerRect.anchorMax = Vector2.one;
+        innerRect.offsetMin = new Vector2(4f, 4f);
+        innerRect.offsetMax = new Vector2(-4f, -4f);
+        Image background = innerPanel.AddComponent<Image>();
+        background.color = new Color(0.09f, 0.10f, 0.12f, 1f);
+
+        VerticalLayoutGroup layout = innerPanel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(40, 40, 32, 32);
+        layout.spacing = 14f;
+        layout.childAlignment = TextAnchor.UpperCenter;
         layout.childControlWidth = true;
-        layout.childControlHeight = false;
+        layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = false;
 
-        CreateText(dialog.transform, title, 46, FontStyles.Bold, 72f);
-        return dialog;
+        CreateText(innerPanel.transform, title, 42, FontStyles.Bold, 64f);
+        return innerPanel;
     }
 
     private TextMeshProUGUI CreateText(Transform parent, string value, int fontSize, FontStyles fontStyle, float height)
@@ -213,7 +257,7 @@ public class GameFlowManager : MonoBehaviour
         buttonObject.transform.SetParent(parent, false);
 
         Image image = buttonObject.AddComponent<Image>();
-        image.color = new Color(0.82f, 0.08f, 0.06f, 0.94f);
+        image.color = new Color(0.22f, 0.24f, 0.28f, 1f);
 
         Button button = buttonObject.AddComponent<Button>();
         button.targetGraphic = image;
@@ -221,15 +265,16 @@ public class GameFlowManager : MonoBehaviour
 
         ColorBlock colors = button.colors;
         colors.normalColor = image.color;
-        colors.highlightedColor = new Color(0.98f, 0.18f, 0.12f, 1f);
-        colors.pressedColor = new Color(0.55f, 0.04f, 0.04f, 1f);
+        colors.highlightedColor = new Color(0.88f, 0.10f, 0.08f, 1f);
+        colors.pressedColor = new Color(0.50f, 0.04f, 0.04f, 1f);
         colors.selectedColor = colors.highlightedColor;
+        colors.fadeDuration = 0.08f;
         button.colors = colors;
 
         LayoutElement layoutElement = buttonObject.AddComponent<LayoutElement>();
-        layoutElement.preferredHeight = 66f;
+        layoutElement.preferredHeight = 58f;
 
-        TextMeshProUGUI text = CreateText(buttonObject.transform, label, 28, FontStyles.Bold, 66f);
+        TextMeshProUGUI text = CreateText(buttonObject.transform, label, 26, FontStyles.Bold, 58f);
         RectTransform textRect = text.GetComponent<RectTransform>();
         textRect.anchorMin = Vector2.zero;
         textRect.anchorMax = Vector2.one;
@@ -245,9 +290,9 @@ public class GameFlowManager : MonoBehaviour
         row.transform.SetParent(parent, false);
 
         HorizontalLayoutGroup rowLayout = row.AddComponent<HorizontalLayoutGroup>();
-        rowLayout.spacing = 18f;
+        rowLayout.spacing = 14f;
         rowLayout.childAlignment = TextAnchor.MiddleCenter;
-        rowLayout.childControlWidth = false;
+        rowLayout.childControlWidth = true;
         rowLayout.childControlHeight = true;
         rowLayout.childForceExpandWidth = false;
 
@@ -268,7 +313,9 @@ public class GameFlowManager : MonoBehaviour
         slider.onValueChanged.AddListener(action);
 
         LayoutElement sliderLayout = sliderObject.AddComponent<LayoutElement>();
-        sliderLayout.preferredWidth = 290f;
+        sliderLayout.minWidth = 200f;
+        sliderLayout.preferredWidth = 280f;
+        sliderLayout.flexibleWidth = 1f;
         sliderLayout.preferredHeight = 28f;
 
         Image background = CreateSliderImage(sliderObject.transform, "Background", new Color(0.22f, 0.22f, 0.24f, 1f));
@@ -355,6 +402,9 @@ public class GameFlowManager : MonoBehaviour
 
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
+
+        if (levelCompletePanel != null)
+            levelCompletePanel.SetActive(false);
     }
 
     private void OpenPause()
@@ -421,6 +471,63 @@ public class GameFlowManager : MonoBehaviour
             SceneManager.LoadScene(currentScene.name);
     }
 
+    private void OpenLevelComplete(float gecenSure, float ucYildizSure, float ikiYildizSure)
+    {
+        EnsureCanvas();
+        isLevelComplete = true;
+        isPaused = false;
+        Time.timeScale = 0f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        if (pausePanel != null)
+            pausePanel.SetActive(false);
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(false);
+
+        string yildiz;
+        string sonuc;
+        if (gecenSure < ucYildizSure)
+        {
+            yildiz = "★★★";
+            sonuc = "Mükemmel! Çok hızlısın!";
+        }
+        else if (gecenSure < ikiYildizSure)
+        {
+            yildiz = "★★☆";
+            sonuc = "İyi iş!";
+        }
+        else
+        {
+            yildiz = "★☆☆";
+            sonuc = "Bitirdin en azından!";
+        }
+
+        if (yildizYazisi != null)
+        {
+            yildizYazisi.text = yildiz;
+            yildizYazisi.color = new Color(1f, 0.85f, 0.1f, 1f);
+        }
+
+        if (sonucYazisi != null)
+            sonucYazisi.text = sonuc;
+
+        if (sureYazisi != null)
+            sureYazisi.text = "Süre: " + Mathf.RoundToInt(gecenSure) + " saniye";
+
+        levelCompletePanel.SetActive(true);
+    }
+
+    private void LoadNextLevel()
+    {
+        Time.timeScale = 1f;
+        int nextIndex = SceneManager.GetActiveScene().buildIndex + 1;
+        if (nextIndex < SceneManager.sceneCountInBuildSettings)
+            SceneManager.LoadScene(nextIndex);
+        else
+            LoadMainMenu();
+    }
+
     private void LoadMainMenu()
     {
         Time.timeScale = 1f;
@@ -454,5 +561,16 @@ public class GameFlowManager : MonoBehaviour
         QualitySettings.SetQualityLevel(index, true);
         PlayerPrefs.SetInt("GraphicsQuality", index);
         PlayerPrefs.Save();
+    }
+
+    private void SetSensitivity(float value)
+    {
+        float sensitivity = Mathf.Lerp(30f, 300f, value);
+        PlayerPrefs.SetFloat("MouseSensitivity", sensitivity);
+        PlayerPrefs.Save();
+
+        PlayerMovement player = FindObjectOfType<PlayerMovement>();
+        if (player != null)
+            player.mouseSensitivity = sensitivity;
     }
 }

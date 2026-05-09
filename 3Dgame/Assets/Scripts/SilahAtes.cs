@@ -299,6 +299,12 @@ public class SilahAtes : MonoBehaviour
         }
     }
 
+    public void YedekMermiEkle(int miktar)
+    {
+        yedekMermi += miktar;
+        MermiUIGuncelle();
+    }
+
     void HitMarkerGoster(bool kafaVurusu)
     {
         if (nisangahEfektiCoroutine != null)

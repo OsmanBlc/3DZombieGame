@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class ZombieAttack : MonoBehaviour
 {
-    public float damagePerSecond = 5f;
+    public float damagePerSecond = 25f;
 
     private PlayerHealth playerHealth;
     private bool isAttacking = false;

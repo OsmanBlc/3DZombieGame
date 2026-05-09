@@ -49,6 +49,8 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         capsuleCollider = GetComponent<CapsuleCollider>();
 
+        mouseSensitivity = PlayerPrefs.GetFloat("MouseSensitivity", mouseSensitivity);
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 

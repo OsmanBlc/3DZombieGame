@@ -48,6 +48,7 @@ public class ZombiCan : MonoBehaviour
     {
         if (olduMu) return;
         olduMu = true;
+        BolumManager.ZombieOlduruldu();
 
         if (animator != null)
             animator.SetTrigger("Die");

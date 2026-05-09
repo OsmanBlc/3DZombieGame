@@ -11,13 +11,24 @@ public class PlayerHealth : MonoBehaviour
 
     [Header("UI")]
     public RectTransform healthBarFill;
+    public Image healthBarFillImage;
     public TextMeshProUGUI healthText;
+
+    [Header("Can Bar Renkleri")]
+    public Color healthColorFull = new Color(0.2f, 0.8f, 0.2f, 1f);
+    public Color healthColorMid = new Color(0.9f, 0.75f, 0.1f, 1f);
+    public Color healthColorLow = new Color(0.9f, 0.15f, 0.1f, 1f);
+    public float lowHealthThreshold = 0.3f;
+    public float midHealthThreshold = 0.6f;
 
     [Header("Hasar Ekran Efekti")]
     public Image damageFlashImage;
     public Color damageFlashColor = new Color(1f, 0f, 0f, 0.35f);
     public float damageFlashDuration = 0.22f;
     public float damageFlashCooldown = 0.25f;
+
+    [Header("Iyilestirme Efekti")]
+    public Color healFlashColor = new Color(0.1f, 0.9f, 0.2f, 0.3f);
 
     [Header("Hasar Sesi")]
     public AudioClip playerHurtClip;
@@ -28,12 +39,17 @@ public class PlayerHealth : MonoBehaviour
     private float nextDamageFlashTime = 0f;
     private float nextHurtSoundTime = 0f;
     private Coroutine damageFlashCoroutine;
+    private Coroutine pulseCoroutine;
     private bool isDead = false;
 
     void Start()
     {
         currentHealth = maxHealth;
         fullWidth = healthBarFill.sizeDelta.x;
+
+        if (healthBarFillImage == null && healthBarFill != null)
+            healthBarFillImage = healthBarFill.GetComponent<Image>();
+
         DamageFlashHazirla();
         UpdateHealthUI();
     }
@@ -46,12 +62,11 @@ public class PlayerHealth : MonoBehaviour
         currentHealth -= damage;
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
 
-        Debug.Log("Can: " + currentHealth);
         UpdateHealthUI();
 
         if (damage > 0f)
         {
-            DamageFlashGoster();
+            FlashEfektiGoster(damageFlashColor, damageFlashDuration);
             HasarSesiCal();
         }
 
@@ -61,6 +76,18 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    public void Heal(float miktar)
+    {
+        if (isDead || miktar <= 0f)
+            return;
+
+        currentHealth += miktar;
+        currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
+
+        UpdateHealthUI();
+        FlashEfektiGoster(healFlashColor, 0.35f);
+    }
+
     void Die()
     {
         if (isDead)
@@ -68,6 +95,13 @@ public class PlayerHealth : MonoBehaviour
 
         isDead = true;
         currentHealth = 0f;
+
+        if (pulseCoroutine != null)
+        {
+            StopCoroutine(pulseCoroutine);
+            pulseCoroutine = null;
+        }
+
         UpdateHealthUI();
         GameFlowManager.ShowGameOver();
     }
@@ -79,9 +113,59 @@ public class PlayerHealth : MonoBehaviour
         float newWidth = fullWidth * healthPercent;
         healthBarFill.sizeDelta = new Vector2(newWidth, healthBarFill.sizeDelta.y);
 
-        if (healthText != null)
+        if (healthBarFillImage != null)
         {
+            Color hedefRenk;
+            if (healthPercent > midHealthThreshold)
+                hedefRenk = Color.Lerp(healthColorMid, healthColorFull, (healthPercent - midHealthThreshold) / (1f - midHealthThreshold));
+            else if (healthPercent > lowHealthThreshold)
+                hedefRenk = Color.Lerp(healthColorLow, healthColorMid, (healthPercent - lowHealthThreshold) / (midHealthThreshold - lowHealthThreshold));
+            else
+                hedefRenk = healthColorLow;
+
+            healthBarFillImage.color = hedefRenk;
+        }
+
+        if (healthText != null)
             healthText.text = Mathf.RoundToInt(currentHealth).ToString();
+
+        bool dusukCan = (currentHealth / maxHealth) < lowHealthThreshold && !isDead;
+        if (dusukCan && pulseCoroutine == null)
+            pulseCoroutine = StartCoroutine(NabizEfekti());
+        else if (!dusukCan && pulseCoroutine != null)
+        {
+            StopCoroutine(pulseCoroutine);
+            pulseCoroutine = null;
+            if (damageFlashImage != null)
+            {
+                Color temiz = damageFlashColor;
+                temiz.a = 0f;
+                damageFlashImage.color = temiz;
+            }
+        }
+    }
+
+    IEnumerator NabizEfekti()
+    {
+        if (damageFlashImage == null)
+            DamageFlashHazirla();
+
+        while (true)
+        {
+            float t = 0f;
+            float sure = 0.7f;
+            while (t < sure)
+            {
+                t += Time.unscaledDeltaTime;
+                float alpha = Mathf.PingPong(t / sure, 1f) * 0.22f;
+                if (damageFlashImage != null)
+                {
+                    Color renk = damageFlashColor;
+                    renk.a = alpha;
+                    damageFlashImage.color = renk;
+                }
+                yield return null;
+            }
         }
     }
 
@@ -116,7 +200,7 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
-    void DamageFlashGoster()
+    void FlashEfektiGoster(Color flashRenk, float sure)
     {
         if (damageFlashImage == null)
             DamageFlashHazirla();
@@ -129,27 +213,27 @@ public class PlayerHealth : MonoBehaviour
         if (damageFlashCoroutine != null)
             StopCoroutine(damageFlashCoroutine);
 
-        damageFlashCoroutine = StartCoroutine(DamageFlashEfekti());
+        damageFlashCoroutine = StartCoroutine(FlashCoroutine(flashRenk, sure));
     }
 
-    IEnumerator DamageFlashEfekti()
+    IEnumerator FlashCoroutine(Color flashRenk, float sure)
     {
         float gecenSure = 0f;
-        damageFlashImage.color = damageFlashColor;
+        damageFlashImage.color = flashRenk;
 
-        while (gecenSure < damageFlashDuration)
+        while (gecenSure < sure)
         {
             gecenSure += Time.unscaledDeltaTime;
-            float alpha = Mathf.Lerp(damageFlashColor.a, 0f, gecenSure / damageFlashDuration);
+            float alpha = Mathf.Lerp(flashRenk.a, 0f, gecenSure / sure);
 
-            Color yeniRenk = damageFlashColor;
+            Color yeniRenk = flashRenk;
             yeniRenk.a = alpha;
             damageFlashImage.color = yeniRenk;
 
             yield return null;
         }
 
-        Color temizRenk = damageFlashColor;
+        Color temizRenk = flashRenk;
         temizRenk.a = 0f;
         damageFlashImage.color = temizRenk;
         damageFlashCoroutine = null;
