@@ -25,6 +25,6 @@ public class LevelManager : MonoBehaviour
 
     public void LoadFinal()
     {
-        SceneManager.LoadScene("FinalBoss");
+        SceneManager.LoadScene("LevelFınal");
     }
 }

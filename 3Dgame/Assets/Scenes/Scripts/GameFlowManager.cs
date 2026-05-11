@@ -148,34 +148,34 @@ public class GameFlowManager : MonoBehaviour
         canvasObject.AddComponent<GraphicRaycaster>();
 
         pausePanel = CreateOverlay("PausePanel");
-        pauseMainPanel = CreateDialog(pausePanel.transform, "PauseMainPanel", "DURAKLATILDI");
-        CreateButton(pauseMainPanel.transform, "Devam Et", ResumeGame);
-        CreateButton(pauseMainPanel.transform, "Ayarlar", OpenSettings);
-        CreateButton(pauseMainPanel.transform, "Ana Menu", LoadMainMenu);
+        pauseMainPanel = CreateDialog(pausePanel.transform, "PauseMainPanel", "DURAKLATILDI", out Transform pauseMainContent);
+        CreateButton(pauseMainContent, "Devam Et", ResumeGame);
+        CreateButton(pauseMainContent, "Ayarlar", OpenSettings);
+        CreateButton(pauseMainContent, "Ana Menu", LoadMainMenu);
 
-        settingsPanel = CreateDialog(pausePanel.transform, "SettingsPanel", "AYARLAR", 560f);
-        CreateSlider(settingsPanel.transform, "Muzik", PlayerPrefs.GetFloat("MusicVolume", 1f), SetMusicVolume, out musicSlider);
-        CreateSlider(settingsPanel.transform, "SFX", PlayerPrefs.GetFloat("SfxVolume", SettingsManager.SfxVolume), SetSfxVolume, out sfxSlider);
+        settingsPanel = CreateDialog(pausePanel.transform, "SettingsPanel", "AYARLAR", out Transform settingsContent, 560f);
+        CreateSlider(settingsContent, "Muzik", PlayerPrefs.GetFloat("MusicVolume", 1f), SetMusicVolume, out musicSlider);
+        CreateSlider(settingsContent, "SFX", PlayerPrefs.GetFloat("SfxVolume", SettingsManager.SfxVolume), SetSfxVolume, out sfxSlider);
         float sensNorm = Mathf.InverseLerp(30f, 300f, PlayerPrefs.GetFloat("MouseSensitivity", 150f));
-        CreateSlider(settingsPanel.transform, "Hassasiyet", sensNorm, SetSensitivity, out sensitivitySlider);
-        CreateGraphicsDropdown(settingsPanel.transform);
-        CreateButton(settingsPanel.transform, "Geri", ShowPauseMain);
+        CreateSlider(settingsContent, "Hassasiyet", sensNorm, SetSensitivity, out sensitivitySlider);
+        CreateGraphicsDropdown(settingsContent);
+        CreateButton(settingsContent, "Geri", ShowPauseMain);
 
         gameOverPanel = CreateOverlay("GameOverPanel");
-        GameObject gameOverDialog = CreateDialog(gameOverPanel.transform, "GameOverDialog", "GAME OVER");
-        CreateText(gameOverDialog.transform, "Zombiler seni yedi...", 20, FontStyles.Italic, 32f);
-        CreateButton(gameOverDialog.transform, "Tekrar Dene", RestartLevel);
-        CreateButton(gameOverDialog.transform, "Ana Menu", LoadMainMenu);
+        CreateDialog(gameOverPanel.transform, "GameOverDialog", "GAME OVER", out Transform gameOverContent);
+        CreateText(gameOverContent, "Zombiler seni yedi...", 20, FontStyles.Italic, 32f);
+        CreateButton(gameOverContent, "Tekrar Dene", RestartLevel);
+        CreateButton(gameOverContent, "Ana Menu", LoadMainMenu);
 
         levelCompletePanel = CreateOverlay("LevelCompletePanel");
-        GameObject lcDialog = CreateDialog(levelCompletePanel.transform, "LevelCompleteDialog", "BÖLÜM BİTTİ", 540f);
-        yildizYazisi = CreateText(lcDialog.transform, "★★★", 64, FontStyles.Bold, 88f);
+        CreateDialog(levelCompletePanel.transform, "LevelCompleteDialog", "BÖLÜM BİTTİ", out Transform levelCompleteContent, 540f);
+        yildizYazisi = CreateText(levelCompleteContent, "★★★", 64, FontStyles.Bold, 88f);
         yildizYazisi.color = new Color(1f, 0.85f, 0.1f, 1f);
-        sonucYazisi = CreateText(lcDialog.transform, "", 22, FontStyles.Italic, 36f);
-        sureYazisi = CreateText(lcDialog.transform, "", 20, FontStyles.Normal, 30f);
+        sonucYazisi = CreateText(levelCompleteContent, "", 22, FontStyles.Italic, 36f);
+        sureYazisi = CreateText(levelCompleteContent, "", 20, FontStyles.Normal, 30f);
         sureYazisi.color = new Color(0.7f, 0.8f, 0.9f, 1f);
-        CreateButton(lcDialog.transform, "Sonraki Bölüm", LoadNextLevel);
-        CreateButton(lcDialog.transform, "Ana Menu", LoadMainMenu);
+        CreateButton(levelCompleteContent, "Sonraki Bölüm", LoadNextLevel);
+        CreateButton(levelCompleteContent, "Ana Menu", LoadMainMenu);
 
         HidePanels();
     }
@@ -196,7 +196,7 @@ public class GameFlowManager : MonoBehaviour
         return overlay;
     }
 
-    private GameObject CreateDialog(Transform parent, string objectName, string title, float height = 420f)
+    private GameObject CreateDialog(Transform parent, string objectName, string title, out Transform content, float height = 420f)
     {
         GameObject dialog = new GameObject(objectName);
         dialog.transform.SetParent(parent, false);
@@ -230,7 +230,8 @@ public class GameFlowManager : MonoBehaviour
         layout.childForceExpandHeight = false;
 
         CreateText(innerPanel.transform, title, 42, FontStyles.Bold, 64f);
-        return innerPanel;
+        content = innerPanel.transform;
+        return dialog;
     }
 
     private TextMeshProUGUI CreateText(Transform parent, string value, int fontSize, FontStyles fontStyle, float height)
@@ -374,6 +375,8 @@ public class GameFlowManager : MonoBehaviour
         GameObject dropdownObject = new GameObject("Graphics Dropdown");
         dropdownObject.transform.SetParent(parent, false);
 
+        dropdownObject.AddComponent<RectTransform>();
+
         Image image = dropdownObject.AddComponent<Image>();
         image.color = new Color(0.16f, 0.17f, 0.19f, 1f);
 
@@ -390,9 +393,138 @@ public class GameFlowManager : MonoBehaviour
         LayoutElement layoutElement = dropdownObject.AddComponent<LayoutElement>();
         layoutElement.preferredHeight = 58f;
 
-        TextMeshProUGUI label = CreateText(dropdownObject.transform, "Grafik Kalitesi", 24, FontStyles.Bold, 58f);
+        TextMeshProUGUI label = CreateDropdownText(dropdownObject.transform, "Caption", "Grafik Kalitesi", 24, FontStyles.Bold);
+        RectTransform labelRect = label.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(20f, 0f);
+        labelRect.offsetMax = new Vector2(-54f, 0f);
+
+        TextMeshProUGUI arrow = CreateDropdownText(dropdownObject.transform, "Arrow", "v", 26, FontStyles.Bold);
+        RectTransform arrowRect = arrow.GetComponent<RectTransform>();
+        arrowRect.anchorMin = new Vector2(1f, 0f);
+        arrowRect.anchorMax = Vector2.one;
+        arrowRect.pivot = new Vector2(1f, 0.5f);
+        arrowRect.sizeDelta = new Vector2(48f, 0f);
+        arrowRect.anchoredPosition = Vector2.zero;
+
+        RectTransform template = CreateDropdownTemplate(dropdownObject.transform);
         graphicsDropdown.captionText = label;
+        graphicsDropdown.template = template;
         graphicsDropdown.RefreshShownValue();
+    }
+
+    private RectTransform CreateDropdownTemplate(Transform parent)
+    {
+        GameObject templateObject = new GameObject("Template");
+        templateObject.transform.SetParent(parent, false);
+
+        RectTransform templateRect = templateObject.AddComponent<RectTransform>();
+        templateRect.anchorMin = new Vector2(0f, 0f);
+        templateRect.anchorMax = new Vector2(1f, 0f);
+        templateRect.pivot = new Vector2(0.5f, 1f);
+        templateRect.anchoredPosition = new Vector2(0f, -4f);
+        templateRect.sizeDelta = new Vector2(0f, 174f);
+
+        Image templateImage = templateObject.AddComponent<Image>();
+        templateImage.color = new Color(0.12f, 0.13f, 0.15f, 1f);
+
+        ScrollRect scrollRect = templateObject.AddComponent<ScrollRect>();
+        scrollRect.horizontal = false;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+
+        GameObject viewportObject = new GameObject("Viewport");
+        viewportObject.transform.SetParent(templateObject.transform, false);
+        RectTransform viewportRect = viewportObject.AddComponent<RectTransform>();
+        viewportRect.anchorMin = Vector2.zero;
+        viewportRect.anchorMax = Vector2.one;
+        viewportRect.offsetMin = Vector2.zero;
+        viewportRect.offsetMax = Vector2.zero;
+
+        Image viewportImage = viewportObject.AddComponent<Image>();
+        viewportImage.color = new Color(1f, 1f, 1f, 0.02f);
+        Mask viewportMask = viewportObject.AddComponent<Mask>();
+        viewportMask.showMaskGraphic = false;
+
+        GameObject contentObject = new GameObject("Content");
+        contentObject.transform.SetParent(viewportObject.transform, false);
+        RectTransform contentRect = contentObject.AddComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = Vector2.one;
+        contentRect.pivot = new Vector2(0.5f, 1f);
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = new Vector2(0f, 174f);
+
+        VerticalLayoutGroup contentLayout = contentObject.AddComponent<VerticalLayoutGroup>();
+        contentLayout.childControlWidth = true;
+        contentLayout.childControlHeight = true;
+        contentLayout.childForceExpandWidth = true;
+        contentLayout.childForceExpandHeight = false;
+        contentLayout.spacing = 0f;
+
+        ContentSizeFitter sizeFitter = contentObject.AddComponent<ContentSizeFitter>();
+        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        Toggle itemToggle = CreateDropdownItem(contentObject.transform);
+
+        scrollRect.viewport = viewportRect;
+        scrollRect.content = contentRect;
+
+        graphicsDropdown.itemText = itemToggle.GetComponentInChildren<TextMeshProUGUI>();
+        templateObject.SetActive(false);
+
+        return templateRect;
+    }
+
+    private Toggle CreateDropdownItem(Transform parent)
+    {
+        GameObject itemObject = new GameObject("Item");
+        itemObject.transform.SetParent(parent, false);
+
+        RectTransform itemRect = itemObject.AddComponent<RectTransform>();
+        itemRect.sizeDelta = new Vector2(0f, 58f);
+
+        Toggle toggle = itemObject.AddComponent<Toggle>();
+        toggle.transition = Selectable.Transition.ColorTint;
+
+        Image itemBackground = itemObject.AddComponent<Image>();
+        itemBackground.color = new Color(0.16f, 0.17f, 0.19f, 1f);
+        toggle.targetGraphic = itemBackground;
+
+        ColorBlock colors = toggle.colors;
+        colors.normalColor = itemBackground.color;
+        colors.highlightedColor = new Color(0.28f, 0.30f, 0.34f, 1f);
+        colors.pressedColor = new Color(0.50f, 0.04f, 0.04f, 1f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.fadeDuration = 0.08f;
+        toggle.colors = colors;
+
+        LayoutElement layoutElement = itemObject.AddComponent<LayoutElement>();
+        layoutElement.preferredHeight = 58f;
+
+        TextMeshProUGUI itemText = CreateDropdownText(itemObject.transform, "Item Label", "Option", 24, FontStyles.Bold);
+        RectTransform itemTextRect = itemText.GetComponent<RectTransform>();
+        itemTextRect.anchorMin = Vector2.zero;
+        itemTextRect.anchorMax = Vector2.one;
+        itemTextRect.offsetMin = new Vector2(20f, 0f);
+        itemTextRect.offsetMax = new Vector2(-20f, 0f);
+
+        return toggle;
+    }
+
+    private TextMeshProUGUI CreateDropdownText(Transform parent, string objectName, string value, int fontSize, FontStyles fontStyle)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        TextMeshProUGUI text = textObject.AddComponent<TextMeshProUGUI>();
+        text.text = value;
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
+        text.raycastTarget = false;
+        return text;
     }
 
     private void HidePanels()
