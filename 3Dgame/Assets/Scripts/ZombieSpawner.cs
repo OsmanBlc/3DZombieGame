@@ -1,62 +1,75 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class ZombieSpawner : MonoBehaviour
 {
     [Header("Zombie Ayarlari")]
     public GameObject zombiPrefab;
-    public int zombiSayisi = 8;
 
-    [Header("Spawn Alani")]
-    public float spawnYaricapi = 40f;
-    public LayerMask zeminKatmani = ~0;
-    public float raycastYuksekligi = 50f;
-    public float spawnYerdenYukseklik = 0.5f;
+    [Header("Spawn Noktalari")]
+    public Transform[] zombiSpawnNoktalari;
+    public bool noktaRotasyonunuKullan = true;
+    public float spawnYukseklikOffset = 0f;
 
     void Start()
     {
         if (zombiPrefab == null)
         {
-            Debug.LogWarning("ZombieSpawner: zombiPrefab atanmamış!");
+            Debug.LogWarning("ZombieSpawner: zombiPrefab atanmamis!");
             return;
         }
+
+        Transform[] spawnNoktalari = SpawnNoktalariGetir();
+        if (spawnNoktalari.Length == 0)
+        {
+            Debug.LogWarning("ZombieSpawner: Spawn noktasi yok. ZombieSpawner altina ZombiePoint objeleri ekle veya zombiSpawnNoktalari listesine nokta surukle.");
+            return;
+        }
+
+        Debug.Log($"ZombieSpawner: {spawnNoktalari.Length} noktaya zombi spawn edilecek.");
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         Transform playerTransform = playerObj != null ? playerObj.transform : null;
 
-        for (int i = 0; i < zombiSayisi; i++)
+        foreach (Transform spawnNoktasi in spawnNoktalari)
         {
-            Vector3? nokta = RastgeleZeminNoktasi();
-            if (!nokta.HasValue)
+            if (spawnNoktasi == null)
                 continue;
 
-            GameObject zombi = Instantiate(zombiPrefab, nokta.Value, Quaternion.identity);
+            Vector3 pozisyon = spawnNoktasi.position + Vector3.up * spawnYukseklikOffset;
+            Quaternion rotasyon = noktaRotasyonunuKullan ? spawnNoktasi.rotation : Quaternion.identity;
+            GameObject zombi = Instantiate(zombiPrefab, pozisyon, rotasyon);
 
-            if (playerTransform != null)
-            {
-                ZombieFollow follow = zombi.GetComponent<ZombieFollow>();
-                if (follow != null)
-                    follow.player = playerTransform;
-            }
+            if (playerTransform == null)
+                continue;
+
+            ZombieFollow follow = zombi.GetComponent<ZombieFollow>();
+            if (follow != null)
+                follow.player = playerTransform;
         }
     }
 
-    Vector3? RastgeleZeminNoktasi()
+    Transform[] SpawnNoktalariGetir()
     {
-        for (int deneme = 0; deneme < 15; deneme++)
-        {
-            Vector2 daire = Random.insideUnitCircle * spawnYaricapi;
-            Vector3 baslangic = transform.position + new Vector3(daire.x, raycastYuksekligi, daire.y);
+        if (zombiSpawnNoktalari != null && zombiSpawnNoktalari.Length > 0)
+            return zombiSpawnNoktalari;
 
-            if (Physics.Raycast(baslangic, Vector3.down, out RaycastHit hit, raycastYuksekligi * 2f, zeminKatmani))
-                return hit.point + Vector3.up * spawnYerdenYukseklik;
-        }
+        List<Transform> noktalar = new List<Transform>();
+        foreach (Transform child in transform)
+            noktalar.Add(child);
 
-        return null;
+        return noktalar.ToArray();
     }
 
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(0.9f, 0.2f, 0.2f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, spawnYaricapi);
+        Gizmos.color = new Color(0.9f, 0.2f, 0.2f, 0.8f);
+        foreach (Transform spawnNoktasi in SpawnNoktalariGetir())
+        {
+            if (spawnNoktasi == null)
+                continue;
+
+            Gizmos.DrawWireSphere(spawnNoktasi.position, 0.5f);
+        }
     }
 }

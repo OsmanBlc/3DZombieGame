@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PaketSpawner : MonoBehaviour
@@ -6,100 +7,81 @@ public class PaketSpawner : MonoBehaviour
     public GameObject canPaketiPrefab;
     public GameObject mermiPaketiPrefab;
 
-    [Header("Sayi Ayarlari")]
-    public int canPaketiSayisi = 4;
-    public int mermiPaketiSayisi = 6;
+    [Header("Can Paketi Noktalari")]
+    public Transform canPaketiNoktalariParent;
+    public Transform[] canPaketiNoktalari;
 
-    [Header("Belirli Noktalar (Opsiyonel)")]
-    public Transform[] belirliNoktalari;
+    [Header("Mermi Paketi Noktalari")]
+    public Transform mermiPaketiNoktalariParent;
+    public Transform[] mermiPaketiNoktalari;
 
-    [Header("Rastgele Yayilim")]
-    public bool rastgeleYayilim = true;
-    public float spawnYaricapi = 40f;
-    public LayerMask zeminKatmani = ~0;
-    public float raycastYuksekligi = 50f;
-    public float spawnYerdenYukseklik = 0.5f;
+    [Header("Spawn Ayarlari")]
+    public bool noktaRotasyonunuKullan = true;
+    public float spawnYukseklikOffset = 0f;
 
     void Start()
     {
-        int toplamPaket = canPaketiSayisi + mermiPaketiSayisi;
-
-        if (belirliNoktalari != null && belirliNoktalari.Length > 0)
-        {
-            SpawnBelirliNoktalarda(toplamPaket);
-        }
-        else if (rastgeleYayilim)
-        {
-            SpawnRastgele();
-        }
+        SpawnPaketler(canPaketiPrefab, SpawnNoktalariGetir(canPaketiNoktalari, canPaketiNoktalariParent), "canPaketiPrefab");
+        SpawnPaketler(mermiPaketiPrefab, SpawnNoktalariGetir(mermiPaketiNoktalari, mermiPaketiNoktalariParent), "mermiPaketiPrefab");
     }
 
-    void SpawnBelirliNoktalarda(int toplamPaket)
+    Transform[] SpawnNoktalariGetir(Transform[] spawnNoktalari, Transform parent)
     {
-        Transform[] karistirilan = (Transform[])belirliNoktalari.Clone();
-        FisherYatesShuffle(karistirilan);
+        if (spawnNoktalari != null && spawnNoktalari.Length > 0)
+            return spawnNoktalari;
 
-        int index = 0;
-        int toplamNokta = karistirilan.Length;
+        if (parent == null)
+            return new Transform[0];
 
-        for (int i = 0; i < canPaketiSayisi && index < toplamNokta; i++, index++)
-        {
-            if (canPaketiPrefab != null)
-                Instantiate(canPaketiPrefab, karistirilan[index].position, Quaternion.identity);
-        }
+        List<Transform> noktalar = new List<Transform>();
+        foreach (Transform child in parent)
+            noktalar.Add(child);
 
-        for (int i = 0; i < mermiPaketiSayisi && index < toplamNokta; i++, index++)
-        {
-            if (mermiPaketiPrefab != null)
-                Instantiate(mermiPaketiPrefab, karistirilan[index].position, Quaternion.identity);
-        }
+        return noktalar.ToArray();
     }
 
-    void SpawnRastgele()
+    void SpawnPaketler(GameObject prefab, Transform[] spawnNoktalari, string prefabAdi)
     {
-        for (int i = 0; i < canPaketiSayisi; i++)
+        if (prefab == null)
         {
-            Vector3? nokta = RastgeleZeminNoktasi();
-            if (nokta.HasValue && canPaketiPrefab != null)
-                Instantiate(canPaketiPrefab, nokta.Value, Quaternion.identity);
+            Debug.LogWarning($"PaketSpawner: {prefabAdi} atanmamis!");
+            return;
         }
 
-        for (int i = 0; i < mermiPaketiSayisi; i++)
+        if (spawnNoktalari == null || spawnNoktalari.Length == 0)
+            return;
+
+        foreach (Transform spawnNoktasi in spawnNoktalari)
         {
-            Vector3? nokta = RastgeleZeminNoktasi();
-            if (nokta.HasValue && mermiPaketiPrefab != null)
-                Instantiate(mermiPaketiPrefab, nokta.Value, Quaternion.identity);
-        }
-    }
+            if (spawnNoktasi == null)
+                continue;
 
-    Vector3? RastgeleZeminNoktasi()
-    {
-        for (int deneme = 0; deneme < 15; deneme++)
-        {
-            Vector2 daire = Random.insideUnitCircle * spawnYaricapi;
-            Vector3 baslangic = transform.position + new Vector3(daire.x, raycastYuksekligi, daire.y);
-
-            if (Physics.Raycast(baslangic, Vector3.down, out RaycastHit hit, raycastYuksekligi * 2f, zeminKatmani))
-            {
-                return hit.point + Vector3.up * spawnYerdenYukseklik;
-            }
-        }
-
-        return null;
-    }
-
-    void FisherYatesShuffle(Transform[] dizi)
-    {
-        for (int i = dizi.Length - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            (dizi[i], dizi[j]) = (dizi[j], dizi[i]);
+            Vector3 pozisyon = spawnNoktasi.position + Vector3.up * spawnYukseklikOffset;
+            Quaternion rotasyon = noktaRotasyonunuKullan ? spawnNoktasi.rotation : Quaternion.identity;
+            Instantiate(prefab, pozisyon, rotasyon);
         }
     }
 
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(0.2f, 0.9f, 0.3f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, spawnYaricapi);
+        Gizmos.color = new Color(0.2f, 0.9f, 0.3f, 0.8f);
+        CizSpawnNoktalari(SpawnNoktalariGetir(canPaketiNoktalari, canPaketiNoktalariParent), 0.35f);
+
+        Gizmos.color = new Color(0.2f, 0.5f, 1f, 0.8f);
+        CizSpawnNoktalari(SpawnNoktalariGetir(mermiPaketiNoktalari, mermiPaketiNoktalariParent), 0.35f);
+    }
+
+    void CizSpawnNoktalari(Transform[] spawnNoktalari, float yaricap)
+    {
+        if (spawnNoktalari == null)
+            return;
+
+        foreach (Transform spawnNoktasi in spawnNoktalari)
+        {
+            if (spawnNoktasi == null)
+                continue;
+
+            Gizmos.DrawWireSphere(spawnNoktasi.position, yaricap);
+        }
     }
 }
