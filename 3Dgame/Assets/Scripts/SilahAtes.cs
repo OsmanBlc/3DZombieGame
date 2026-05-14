@@ -158,11 +158,21 @@ public class SilahAtes : MonoBehaviour
 
     void AtesEt()
     {
-        if (oyuncuKamerasi == null)
-            return;
+        {
+            if (oyuncuKamerasi == null)
+                return;
 
-        mevcutMermi--;
-        MermiUIGuncelle();
+            mevcutMermi--;
+            MermiUIGuncelle();
+
+            // KOVAN FIRLATMA BURADA ÇALIŞACAK!
+            if (kovanPrefab != null && kovanCikisNoktasi != null)
+            {
+                KovanFirlat();
+            }
+
+            // ... (kodun geri kalanı aynı kalıyor)
+        }
 
         if (namluAtesi != null)
             namluAtesi.Play();
@@ -349,4 +359,29 @@ public class SilahAtes : MonoBehaviour
         nisangahEfektiCalisiyor = false;
         nisangahEfektiCoroutine = null;
     }
+    [Header("Kovan Ayarları")]
+    public GameObject kovanPrefab; // Hazırladığın kovan prefab'ı
+    public Transform kovanCikisNoktasi; // Casing_Exit_Point
+    public float firlatmaKuvveti = 5f; // Kovanın sağa fırlama hızı
+    public float dondurmeKuvveti = 10f; // Kovanın havada takla atma hızı
+
+    public void KovanFirlat()
+    {
+        // Kovanı oluştur
+        GameObject yeniKovan = Instantiate(kovanPrefab, kovanCikisNoktasi.position, kovanCikisNoktasi.rotation);
+
+        // Fizik uygula
+        Rigidbody rb = yeniKovan.GetComponent<Rigidbody>();
+
+        // Kovanı sağa ve hafif yukarı doğru fırlat (Z ekseni çıkış yönün olsun)
+        rb.AddForce(kovanCikisNoktasi.forward * firlatmaKuvveti, ForceMode.Impulse);
+
+        // Rastgele takla attır
+        rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * dondurmeKuvveti, ForceMode.Impulse);
+
+        // 5 saniye sonra dünyadan sil (Performans için önemli)
+        Destroy(yeniKovan, 5f);
+
+    }
+ 
 }
