@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class SilahDegistirici : MonoBehaviour
 {
-    [Header("Silahlar")]
+    [Header("Silahlar (Hazırladığın 3 El+Silah Klasörünü Buraya At)")]
     public GameObject[] silahlar;
     private int aktifSilahIndex = 0;
 
@@ -13,7 +13,18 @@ public class SilahDegistirici : MonoBehaviour
 
     void Start()
     {
-        SilahlariGuncelle();
+        // BUG ENGELLEME: Oyun ilk açıldığında aktifSilahIndex dışındaki 
+        // tüm silahları kodla kesin olarak kapatıyoruz.
+        if (silahlar != null && silahlar.Length > 0)
+        {
+            for (int i = 0; i < silahlar.Length; i++)
+            {
+                if (silahlar[i] != null)
+                    silahlar[i].SetActive(i == aktifSilahIndex);
+            }
+        }
+
+        SilahIkonunuGuncelle();
     }
 
     void Update()
@@ -58,7 +69,8 @@ public class SilahDegistirici : MonoBehaviour
         else if (yeniSilahIndex < 0)
             yeniSilahIndex = silahlar.Length - 1;
 
-        if (aktifSilahIndex == yeniSilahIndex)
+        // Zaten o silah seçiliyse tekrar işlem yapma
+        if (aktifSilahIndex == yeniSilahIndex && silahlar[aktifSilahIndex].activeSelf)
             return;
 
         aktifSilahIndex = yeniSilahIndex;
@@ -70,7 +82,7 @@ public class SilahDegistirici : MonoBehaviour
         if (silahlar == null || silahlar.Length == 0)
             return;
 
-        // Aktif silahı aç, diğerlerini kapat
+        // Aktif olan klasörü açar, diğer iki klasörü kapatır
         for (int i = 0; i < silahlar.Length; i++)
         {
             if (silahlar[i] != null)
@@ -82,22 +94,21 @@ public class SilahDegistirici : MonoBehaviour
 
     void SilahIkonunuGuncelle()
     {
-        // UI ikonunu değiştir
         if (silahIkonu != null && silahSprite != null && silahSprite.Length > aktifSilahIndex)
         {
             silahIkonu.sprite = silahSprite[aktifSilahIndex];
 
-            // Tabanca normal yön ve normal boyut
+            // Tabanca (Element 0) normal yön ve normal boyut
             if (aktifSilahIndex == 0)
             {
                 silahIkonu.rectTransform.localScale = new Vector3(1f, 1f, 1f);
             }
-            // SMG ters yön ve daha küçük
+            // SMG (Element 1) ters yön ve daha küçük
             else if (aktifSilahIndex == 1)
             {
                 silahIkonu.rectTransform.localScale = new Vector3(-0.65f, 0.65f, 1f);
             }
-            // Shotgun ters yön ve daha küçük
+            // Shotgun (Element 2) ters yön ve daha küçük
             else if (aktifSilahIndex == 2)
             {
                 silahIkonu.rectTransform.localScale = new Vector3(-0.60f, 0.60f, 1f);
