@@ -75,7 +75,8 @@ public class SilahAtes : MonoBehaviour
         if (silahSesi == null)
             silahSesi = GetComponent<AudioSource>();
 
-        hissiyat = GetComponent<SilahHissiyat>();
+        hissiyat = GetComponentInParent<SilahHissiyat>(); // Eğer hissiyat üst klasördeyse
+                                                          // veya Inspector'dan elle atamak için SilahAtes kodunda "public SilahHissiyat hissiyat;" yapabilirsin kanka.
 
         if (mevcutMermi <= 0)
             mevcutMermi = sarjorKapasitesi;
@@ -158,21 +159,11 @@ public class SilahAtes : MonoBehaviour
 
     void AtesEt()
     {
-        {
-            if (oyuncuKamerasi == null)
-                return;
+        if (oyuncuKamerasi == null)
+            return;
 
-            mevcutMermi--;
-            MermiUIGuncelle();
-
-            // KOVAN FIRLATMA BURADA ÇALIŞACAK!
-            if (kovanPrefab != null && kovanCikisNoktasi != null)
-            {
-                KovanFirlat();
-            }
-
-            // ... (kodun geri kalanı aynı kalıyor)
-        }
+        mevcutMermi--;
+        MermiUIGuncelle();
 
         if (namluAtesi != null)
             namluAtesi.Play();
@@ -184,9 +175,7 @@ public class SilahAtes : MonoBehaviour
         }
 
         if (blowbackScript != null)
-        {
             blowbackScript.ApplyBlowback();
-        }
 
         if (silahTuru == SilahTuru.Pompali)
         {
@@ -200,12 +189,15 @@ public class SilahAtes : MonoBehaviour
             MermiYolla(false);
         }
 
+        // 💥 SİHİRLİ SATIR: Kovan fırlatma fonksiyonunu burada çağırıyoruz!
+        KovanFirlat();
+
+        // --- ANIMASYONSUZ SEKME TETİKLEME ---
         if (hissiyat != null)
         {
             hissiyat.GeriTepmeUygula(silahTuru == SilahTuru.Otomatik);
         }
     }
-
     void MermiYolla(bool sacilmaVar)
     {
         Vector3 rayYonu = oyuncuKamerasi.transform.forward;

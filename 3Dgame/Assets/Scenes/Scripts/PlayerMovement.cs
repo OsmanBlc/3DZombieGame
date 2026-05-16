@@ -154,7 +154,7 @@ public class PlayerMovement : MonoBehaviour
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -80f, 80f);
+        xRotation = Mathf.Clamp(xRotation, -60f, 60f);
 
         if (cameraTransform != null)
             cameraTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
