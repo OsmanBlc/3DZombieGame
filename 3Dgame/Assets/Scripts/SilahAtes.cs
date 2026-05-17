@@ -61,6 +61,14 @@ public class SilahAtes : MonoBehaviour
     [Header("Efektler")]
     public GameObject kanEfekti;
 
+    [Header("Mermi İzi (Tracer) Ayarları")]
+    [Tooltip("İçinde LineRenderer bileşeni olan boş bir Prefab objesi sürükle")]
+    public GameObject mermiIziPrefab;
+    [Tooltip("Merminin tam olarak nereden fırlayacağını seç (Namlu ucu)")]
+    public Transform namluUcu;
+    [Tooltip("Mermi izinin ekranda kalma süresi (0.03 - 0.05 arası idealdir)")]
+    public float izKalmaSuresi = 0.04f;
+
     private SilahHissiyat hissiyat;
     private Vector3 nisangahOrijinalScale;
     private Coroutine nisangahEfektiCoroutine;
@@ -75,8 +83,7 @@ public class SilahAtes : MonoBehaviour
         if (silahSesi == null)
             silahSesi = GetComponent<AudioSource>();
 
-        hissiyat = GetComponentInParent<SilahHissiyat>(); // Eğer hissiyat üst klasördeyse
-                                                          // veya Inspector'dan elle atamak için SilahAtes kodunda "public SilahHissiyat hissiyat;" yapabilirsin kanka.
+        hissiyat = GetComponentInParent<SilahHissiyat>();
 
         if (mevcutMermi <= 0)
             mevcutMermi = sarjorKapasitesi;
@@ -177,6 +184,9 @@ public class SilahAtes : MonoBehaviour
         if (blowbackScript != null)
             blowbackScript.ApplyBlowback();
 
+        // 💥 POMPALI UYUMLU ÇOKLU TRACER MOTORU TETİKLENİYOR
+        MermiIziOlustur();
+
         if (silahTuru == SilahTuru.Pompali)
         {
             for (int i = 0; i < pompaliMermiSayisi; i++)
@@ -189,15 +199,67 @@ public class SilahAtes : MonoBehaviour
             MermiYolla(false);
         }
 
-        // 💥 SİHİRLİ SATIR: Kovan fırlatma fonksiyonunu burada çağırıyoruz!
         KovanFirlat();
 
-        // --- ANIMASYONSUZ SEKME TETİKLEME ---
         if (hissiyat != null)
         {
             hissiyat.GeriTepmeUygula(silahTuru == SilahTuru.Otomatik);
         }
     }
+
+    // 🎯 POMPALI SAÇMA SİSTEMİNE GÖRE YENİLENEN İZ MOTORU
+    void MermiIziOlustur()
+    {
+        if (mermiIziPrefab == null || namluUcu == null) return;
+
+        if (silahTuru == SilahTuru.Pompali)
+        {
+            // Pompalı ise mermi sayısı kadar döngü çalıştır ve her birine rastgele açı ver
+            for (int i = 0; i < pompaliMermiSayisi; i++)
+            {
+                Vector3 sacmaYonu = namluUcu.forward;
+                sacmaYonu.x += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+                sacmaYonu.y += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+                sacmaYonu.z += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
+
+                CizgiCiz(sacmaYonu);
+            }
+        }
+        else
+        {
+            // Normal tekli veya otomatik ise tek bir düz çizgi at
+            CizgiCiz(namluUcu.forward);
+        }
+    }
+
+    // Çizgi oluşturma ve Raycast hesaplama işini yapan yardımcı fonksiyon
+    void CizgiCiz(Vector3 yon)
+    {
+        Ray ray = new Ray(namluUcu.position, yon);
+        RaycastHit hit;
+        Vector3 bitisNoktasi;
+
+        if (Physics.Raycast(ray, out hit, menzil))
+        {
+            bitisNoktasi = hit.point; // Saçmanın çarptığı yüzey
+        }
+        else
+        {
+            bitisNoktasi = namluUcu.position + yon * menzil; // Boşluğa giden saçma sınırı
+        }
+
+        GameObject izObjesi = Instantiate(mermiIziPrefab, namluUcu.position, Quaternion.identity);
+        LineRenderer line = izObjesi.GetComponent<LineRenderer>();
+
+        if (line != null)
+        {
+            line.SetPosition(0, namluUcu.position);
+            line.SetPosition(1, bitisNoktasi);
+        }
+
+        Destroy(izObjesi, izKalmaSuresi);
+    }
+
     void MermiYolla(bool sacilmaVar)
     {
         Vector3 rayYonu = oyuncuKamerasi.transform.forward;
@@ -219,7 +281,6 @@ public class SilahAtes : MonoBehaviour
             if (vurulanZombi != null)
             {
                 float uygulanacakHasar = hasar;
-
                 bool kafaVurusu = hit.collider.CompareTag("Head");
 
                 if (kafaVurusu)
@@ -261,7 +322,7 @@ public class SilahAtes : MonoBehaviour
         int alinacakMermi = Mathf.Min(eksikMermi, yedekMermi);
 
         mevcutMermi += alinacakMermi;
-        yedekMermi -= alinacakMermi;
+        yedekMermi = Mathf.Max(0, yedekMermi - alinacakMermi);
 
         yenidenDolduruyor = false;
         MermiUIGuncelle();
@@ -351,29 +412,31 @@ public class SilahAtes : MonoBehaviour
         nisangahEfektiCalisiyor = false;
         nisangahEfektiCoroutine = null;
     }
+
     [Header("Kovan Ayarları")]
-    public GameObject kovanPrefab; // Hazırladığın kovan prefab'ı
-    public Transform kovanCikisNoktasi; // Casing_Exit_Point
-    public float firlatmaKuvveti = 5f; // Kovanın sağa fırlama hızı
-    public float dondurmeKuvveti = 10f; // Kovanın havada takla atma hızı
+    public GameObject kovanPrefab;
+    public Transform kovanCikisNoktasi;
+    public float firlatmaKuvveti = 5f;
+    public float dondurmeKuvveti = 10f;
 
     public void KovanFirlat()
     {
-        // Kovanı oluştur
-        GameObject yeniKovan = Instantiate(kovanPrefab, kovanCikisNoktasi.position, kovanCikisNoktasi.rotation);
+        if (kovanPrefab == null || kovanCikisNoktasi == null) return;
 
-        // Fizik uygula
+        GameObject yeniKovan = Instantiate(kovanPrefab, kovanCikisNoktasi.position, kovanCikisNoktasi.rotation);
         Rigidbody rb = yeniKovan.GetComponent<Rigidbody>();
 
-        // Kovanı sağa ve hafif yukarı doğru fırlat (Z ekseni çıkış yönün olsun)
-        rb.AddForce(kovanCikisNoktasi.forward * firlatmaKuvveti, ForceMode.Impulse);
+        if (rb != null)
+        {
+            rb.AddForce(kovanCikisNoktasi.forward * firlatmaKuvveti, ForceMode.Impulse);
+            rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * dondurmeKuvveti, ForceMode.Impulse);
+        }
 
-        // Rastgele takla attır
-        rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * dondurmeKuvveti, ForceMode.Impulse);
-
-        // 5 saniye sonra dünyadan sil (Performans için önemli)
         Destroy(yeniKovan, 5f);
-
     }
- 
+
+    public bool ReloadYapiyorMu()
+    {
+        return yenidenDolduruyor;
+    }
 }

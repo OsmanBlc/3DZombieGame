@@ -64,6 +64,24 @@ public class SilahDegistirici : MonoBehaviour
         if (silahlar == null || silahlar.Length == 0)
             return;
 
+        // --- 🛡️ SİNSİ RELOAD BUG ENGELLEME DUVARI BURASI ---
+        // Şu an elindeki aktif silah klasörünü kontrol ediyoruz
+        if (silahlar[aktifSilahIndex] != null)
+        {
+            // SilahAtes script'i doğrudan klasörün üstünde veya altındaki mesh'te olabilir, 
+            // her iki ihtimalde de bulabilmesi için GetComponentInChildren kullanıyoruz.
+            SilahAtes suAnkiSilahScripti = silahlar[aktifSilahIndex].GetComponentInChildren<SilahAtes>();
+
+            // Eğer silahın üzerinde ateş kodu varsa VE şu an şarjör değiştiriyorsa (ReloadYapiyorMu)
+            // Silah değiştirmeyi tık diye engelliyoruz (return).
+            if (suAnkiSilahScripti != null && suAnkiSilahScripti.ReloadYapiyorMu())
+            {
+                Debug.LogWarning("Kanka şarjör dolarken silah değiştiremezsin, bug elendi!");
+                return;
+            }
+        }
+
+        // Sınır kontrolleri (Eski kodun aynen devam ediyor)
         if (yeniSilahIndex >= silahlar.Length)
             yeniSilahIndex = 0;
         else if (yeniSilahIndex < 0)

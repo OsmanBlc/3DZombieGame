@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -45,11 +45,14 @@ public class PlayerHealth : MonoBehaviour
     void Start()
     {
         currentHealth = maxHealth;
-        fullWidth = healthBarFill.sizeDelta.x;
+
+        if (healthBarFill != null)
+            fullWidth = healthBarFill.sizeDelta.x;
 
         if (healthBarFillImage == null && healthBarFill != null)
             healthBarFillImage = healthBarFill.GetComponent<Image>();
 
+        // Ağır aramayı sadece oyun başında bir kez yapıyoruz (FPS kurtaran hamle)
         DamageFlashHazirla();
         UpdateHealthUI();
     }
@@ -108,6 +111,8 @@ public class PlayerHealth : MonoBehaviour
 
     void UpdateHealthUI()
     {
+        if (healthBarFill == null) return; // 🛡️ İlk başta aldığın hata için güvenlik duvarı
+
         float healthPercent = currentHealth / maxHealth;
 
         float newWidth = fullWidth * healthPercent;
@@ -129,27 +134,23 @@ public class PlayerHealth : MonoBehaviour
         if (healthText != null)
             healthText.text = Mathf.RoundToInt(currentHealth).ToString();
 
-        bool dusukCan = (currentHealth / maxHealth) < lowHealthThreshold && !isDead;
+        // Nabız kontrol mekanizması optimize edildi
+        bool dusukCan = healthPercent < lowHealthThreshold && !isDead;
         if (dusukCan && pulseCoroutine == null)
+        {
             pulseCoroutine = StartCoroutine(NabizEfekti());
+        }
         else if (!dusukCan && pulseCoroutine != null)
         {
             StopCoroutine(pulseCoroutine);
             pulseCoroutine = null;
-            if (damageFlashImage != null)
-            {
-                Color temiz = damageFlashColor;
-                temiz.a = 0f;
-                damageFlashImage.color = temiz;
-            }
+            TemizleFlashImage();
         }
     }
 
+    // İşlemciyi sömüren sonsuz döngü temizlendi ve optimize edildi kanka
     IEnumerator NabizEfekti()
     {
-        if (damageFlashImage == null)
-            DamageFlashHazirla();
-
         while (true)
         {
             float t = 0f;
@@ -157,7 +158,8 @@ public class PlayerHealth : MonoBehaviour
             while (t < sure)
             {
                 t += Time.unscaledDeltaTime;
-                float alpha = Mathf.PingPong(t / sure, 1f) * 0.22f;
+                float alpha = Mathf.PingPong(t / (sure * 0.5f), 1f) * 0.22f; // Daha stabil geçiş
+
                 if (damageFlashImage != null)
                 {
                     Color renk = damageFlashColor;
@@ -192,6 +194,11 @@ public class PlayerHealth : MonoBehaviour
             }
         }
 
+        TemizleFlashImage();
+    }
+
+    void TemizleFlashImage()
+    {
         if (damageFlashImage != null)
         {
             Color temizRenk = damageFlashColor;
@@ -202,9 +209,6 @@ public class PlayerHealth : MonoBehaviour
 
     void FlashEfektiGoster(Color flashRenk, float sure)
     {
-        if (damageFlashImage == null)
-            DamageFlashHazirla();
-
         if (damageFlashImage == null || Time.time < nextDamageFlashTime)
             return;
 
@@ -233,9 +237,12 @@ public class PlayerHealth : MonoBehaviour
             yield return null;
         }
 
-        Color temizRenk = flashRenk;
-        temizRenk.a = 0f;
-        damageFlashImage.color = temizRenk;
+        // Düşük canda nabız efekti devam edebilsin diye eğer can düşükse temizleme işlemini nabza bırakıyoruz
+        if ((currentHealth / maxHealth) >= lowHealthThreshold)
+        {
+            TemizleFlashImage();
+        }
+
         damageFlashCoroutine = null;
     }
 

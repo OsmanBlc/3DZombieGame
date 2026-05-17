@@ -115,7 +115,11 @@ public class PlayerMovement : MonoBehaviour
     void HandleFootsteps()
     {
         if (footstepClip == null || footstepSource == null || !isGrounded)
+        {
+            // Hareket durduğunda zamanlayıcıyı sıfırla ki tekrar yürüyünce beklemesin
+            nextFootstepTime = 0f;
             return;
+        }
 
         Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
 
@@ -125,18 +129,24 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
+        // Zamanlayıcı kontrolü
         if (Time.time < nextFootstepTime)
             return;
 
+        // SESİ OYNAT
         footstepSource.pitch = Random.Range(0.92f, 1.08f);
         footstepSource.PlayOneShot(footstepClip, footstepVolume * SettingsManager.SfxVolume);
 
+        // BİR SONRAKİ SESİN ZAMANINI BELİRLE
+        float currentInterval;
         if (isCrouching)
-            nextFootstepTime = Time.time + crouchStepInterval;
+            currentInterval = crouchStepInterval;
         else if (Input.GetKey(KeyCode.LeftShift))
-            nextFootstepTime = Time.time + runStepInterval;
+            currentInterval = runStepInterval;
         else
-            nextFootstepTime = Time.time + walkStepInterval;
+            currentInterval = walkStepInterval;
+
+        nextFootstepTime = Time.time + currentInterval;
     }
 
     void ApplyExtraGravity()
