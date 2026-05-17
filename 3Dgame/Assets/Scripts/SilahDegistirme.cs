@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,11 +12,17 @@ public class SilahDegistirici : MonoBehaviour
     public Image silahIkonu;
     public Sprite[] silahSprite;
 
+    [Header("Ekonomi Sistemi")]
+    public int toplamPara = 0;
+    public TMPro.TMP_Text paraYazisi;
+
     void Start()
     {
-        // BUG ENGELLEME: Oyun ilk açıldığında aktifSilahIndex dışındaki 
-        // tüm silahları kodla kesin olarak kapatıyoruz.
-        if (silahlar != null && silahlar.Length > 0)
+        // 🎯 HAFIZADAN YÜKLE: Oyun açıldığında daha önce kaydedilen parayı çekiyoruz kanka.
+        toplamPara = PlayerPrefs.GetInt("ToplamPara", 0);
+
+        // Bug Engelleme: İlk açılışta sadece aktif silahı açar
+        if (silahlar != null && Array.Exists(silahlar, x => x != null))
         {
             for (int i = 0; i < silahlar.Length; i++)
             {
@@ -24,72 +31,64 @@ public class SilahDegistirici : MonoBehaviour
             }
         }
 
+        ParaUIGuncelle();
         SilahIkonunuGuncelle();
+    }
+
+    // 🎯 TEK VE GERÇEK PARAEKLE MOTORU: Hem ekler hem PlayerPrefs ile hafızaya kilitler aga
+    public void ParaEkle(int miktar)
+    {
+        toplamPara += miktar;
+
+        PlayerPrefs.SetInt("ToplamPara", toplamPara);
+        PlayerPrefs.Save();
+
+        ParaUIGuncelle();
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
-        {
-            SilahSec(0);
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
-        {
-            SilahSec(1);
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
-        {
-            SilahSec(2);
-            return;
-        }
+        // Klavyeden silaha basınca kilit kontrolü yapıyoruz kanka
+        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) { SilahSec(0); return; }
+        if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) { SilahSec(1); return; }
+        if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) { SilahSec(2); return; }
 
         float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll > 0f) ScrollButonYonu(1);
+        else if (scroll < 0f) ScrollButonYonu(-1);
+    }
 
-        if (scroll > 0f)
-        {
-            SilahSec(aktifSilahIndex + 1);
-        }
-        else if (scroll < 0f)
-        {
-            SilahSec(aktifSilahIndex - 1);
-        }
+    void ScrollButonYonu(int yon)
+    {
+        int hedefIndex = aktifSilahIndex + yon;
+
+        // Sınır kontrolleri döngüsü
+        if (hedefIndex >= silahlar.Length) hedefIndex = 0;
+        else if (hedefIndex < 0) hedefIndex = silahlar.Length - 1;
+
+        SilahSec(hedefIndex);
     }
 
     void SilahSec(int yeniSilahIndex)
     {
-        if (silahlar == null || silahlar.Length == 0)
-            return;
+        if (silahlar == null || silahlar.Length == 0) return;
 
-        // --- 🛡️ SİNSİ RELOAD BUG ENGELLEME DUVARI BURASI ---
-        // Şu an elindeki aktif silah klasörünü kontrol ediyoruz
-        if (silahlar[aktifSilahIndex] != null)
+        // 🛡️ KİLİTLİ SİLAH DUVARI: Geçiş yapılmak istenen silah satın alınmadıysa geçişi iptal et!
+        SilahVerisi hedefSilahVerisi = silahlar[yeniSilahIndex].GetComponentInChildren<SilahVerisi>();
+        if (hedefSilahVerisi != null && !hedefSilahVerisi.satinAlindi)
         {
-            // SilahAtes script'i doğrudan klasörün üstünde veya altındaki mesh'te olabilir, 
-            // her iki ihtimalde de bulabilmesi için GetComponentInChildren kullanıyoruz.
-            SilahAtes suAnkiSilahScripti = silahlar[aktifSilahIndex].GetComponentInChildren<SilahAtes>();
-
-            // Eğer silahın üzerinde ateş kodu varsa VE şu an şarjör değiştiriyorsa (ReloadYapiyorMu)
-            // Silah değiştirmeyi tık diye engelliyoruz (return).
-            if (suAnkiSilahScripti != null && suAnkiSilahScripti.ReloadYapiyorMu())
-            {
-                Debug.LogWarning("Kanka şarjör dolarken silah değiştiremezsin, bug elendi!");
-                return;
-            }
+            Debug.LogWarning(hedefSilahVerisi.silahAdi + " kilitli kanka! Önce mağazadan satın al.");
+            return;
         }
 
-        // Sınır kontrolleri (Eski kodun aynen devam ediyor)
-        if (yeniSilahIndex >= silahlar.Length)
-            yeniSilahIndex = 0;
-        else if (yeniSilahIndex < 0)
-            yeniSilahIndex = silahlar.Length - 1;
+        // Sinsi Reload Engelleme (Şarjör değiştirirken silah değiştirmeyi kapatır)
+        if (silahlar[aktifSilahIndex] != null)
+        {
+            SilahAtes suAnkiSilahScripti = silahlar[aktifSilahIndex].GetComponentInChildren<SilahAtes>();
+            if (suAnkiSilahScripti != null && suAnkiSilahScripti.ReloadYapiyorMu()) return;
+        }
 
-        // Zaten o silah seçiliyse tekrar işlem yapma
-        if (aktifSilahIndex == yeniSilahIndex && silahlar[aktifSilahIndex].activeSelf)
-            return;
+        if (aktifSilahIndex == yeniSilahIndex && silahlar[aktifSilahIndex].activeSelf) return;
 
         aktifSilahIndex = yeniSilahIndex;
         SilahlariGuncelle();
@@ -97,17 +96,45 @@ public class SilahDegistirici : MonoBehaviour
 
     void SilahlariGuncelle()
     {
-        if (silahlar == null || silahlar.Length == 0)
-            return;
-
-        // Aktif olan klasörü açar, diğer iki klasörü kapatır
         for (int i = 0; i < silahlar.Length; i++)
         {
             if (silahlar[i] != null)
                 silahlar[i].SetActive(i == aktifSilahIndex);
         }
-
         SilahIkonunuGuncelle();
+    }
+
+    // 🎯 MAĞAZADAN SATIN ALMA FONKSİYONU
+    public void SilahSatinAl(int silahIndex)
+    {
+        SilahVerisi veri = silahlar[silahIndex].GetComponentInChildren<SilahVerisi>();
+
+        if (veri == null) return;
+        if (veri.satinAlindi) return;
+
+        if (toplamPara >= veri.satinAlmaFiyati)
+        {
+            toplamPara -= veri.satinAlmaFiyati;
+            veri.satinAlindi = true;
+            veri.ButonUIGuncelle();
+
+            // 🎯 HARCANAN PARAYI DA HAFIZAYA KİLİTLİYORUZ
+            PlayerPrefs.SetInt("ToplamPara", toplamPara);
+            PlayerPrefs.Save();
+
+            ParaUIGuncelle();
+            Debug.Log(veri.silahAdi + " başarıyla satın alındı kanka!");
+        }
+        else
+        {
+            Debug.LogWarning("Paran yetmiyor kanka! Zombi avlamaya devam.");
+        }
+    }
+
+    void ParaUIGuncelle()
+    {
+        if (paraYazisi != null)
+            paraYazisi.text = toplamPara.ToString(); // Sadece saf sayı kanka, "TL" yok
     }
 
     void SilahIkonunuGuncelle()
@@ -116,21 +143,12 @@ public class SilahDegistirici : MonoBehaviour
         {
             silahIkonu.sprite = silahSprite[aktifSilahIndex];
 
-            // Tabanca (Element 0) normal yön ve normal boyut
             if (aktifSilahIndex == 0)
-            {
                 silahIkonu.rectTransform.localScale = new Vector3(1f, 1f, 1f);
-            }
-            // SMG (Element 1) ters yön ve daha küçük
             else if (aktifSilahIndex == 1)
-            {
-                silahIkonu.rectTransform.localScale = new Vector3(-0.65f, 0.65f, 1f);
-            }
-            // Shotgun (Element 2) ters yön ve daha küçük
+                silahIkonu.rectTransform.localScale = new Vector3(0.65f, 0.65f, 1f);
             else if (aktifSilahIndex == 2)
-            {
-                silahIkonu.rectTransform.localScale = new Vector3(-0.60f, 0.60f, 1f);
-            }
+                silahIkonu.rectTransform.localScale = new Vector3(0.60f, 0.60f, 1f);
         }
     }
 }

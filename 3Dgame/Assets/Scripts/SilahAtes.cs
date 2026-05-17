@@ -61,13 +61,15 @@ public class SilahAtes : MonoBehaviour
     [Header("Efektler")]
     public GameObject kanEfekti;
 
-    [Header("Mermi İzi (Tracer) Ayarları")]
-    [Tooltip("İçinde LineRenderer bileşeni olan boş bir Prefab objesi sürükle")]
-    public GameObject mermiIziPrefab;
+    [Header("Mermi Objesi (Projectile) Ayarları")]
+    [Tooltip("Namludan fırlayacak olan mermi/iz prefab'ını sürükle")]
+    public GameObject mermiPrefab;
     [Tooltip("Merminin tam olarak nereden fırlayacağını seç (Namlu ucu)")]
     public Transform namluUcu;
-    [Tooltip("Mermi izinin ekranda kalma süresi (0.03 - 0.05 arası idealdir)")]
-    public float izKalmaSuresi = 0.04f;
+    [Tooltip("Merminin uçuş hızı (Gerçekçi olması için 150-250 arası idealdir kanka)")]
+    public float mermiHizi = 200f;
+    [Tooltip("Mermi objesinin boşa gittiğinde kaç saniye sonra silineceği")]
+    public float mermiImhaSuresi = 0.5f;
 
     private SilahHissiyat hissiyat;
     private Vector3 nisangahOrijinalScale;
@@ -149,7 +151,10 @@ public class SilahAtes : MonoBehaviour
         Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, menzil))
+        // 🛡️ Mermilerin nişangah rengini bozmasını engellemek için IgnoreRaycast katmanını hariç tutuyoruz
+        int mask = ~LayerMask.GetMask("Ignore Raycast");
+
+        if (Physics.Raycast(ray, out hit, menzil, mask))
         {
             ZombiCan bakilanZombi = hit.transform.GetComponentInParent<ZombiCan>();
 
@@ -184,8 +189,23 @@ public class SilahAtes : MonoBehaviour
         if (blowbackScript != null)
             blowbackScript.ApplyBlowback();
 
-        // 💥 POMPALI UYUMLU ÇOKLU TRACER MOTORU TETİKLENİYOR
-        MermiIziOlustur();
+        // 💥 DOĞRULTU HESAPLAMA MOTORU: Kameranın tam baktığı hedef noktayı buluyoruz kanka
+        Vector3 hedefNokta;
+        Ray ray = oyuncuKamerasi.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        RaycastHit hit;
+        int mask = ~LayerMask.GetMask("Ignore Raycast");
+
+        if (Physics.Raycast(ray, out hit, menzil, mask))
+        {
+            hedefNokta = hit.point;
+        }
+        else
+        {
+            hedefNokta = ray.GetPoint(menzil);
+        }
+
+        // Mermileri bu hedef noktaya odaklayarak fırlatması için motoru tetikliyoruz kanka
+        MermiIziOlustur(hedefNokta);
 
         if (silahTuru == SilahTuru.Pompali)
         {
@@ -207,57 +227,44 @@ public class SilahAtes : MonoBehaviour
         }
     }
 
-    // 🎯 POMPALI SAÇMA SİSTEMİNE GÖRE YENİLENEN İZ MOTORU
-    void MermiIziOlustur()
+    void MermiIziOlustur(Vector3 hedefNokta)
     {
-        if (mermiIziPrefab == null || namluUcu == null) return;
+        if (mermiPrefab == null || namluUcu == null) return;
+
+        // Namludan hedefe doğru giden temiz yön vektörü kanka
+        Vector3 firlamaYonu = (hedefNokta - namluUcu.position).normalized;
 
         if (silahTuru == SilahTuru.Pompali)
         {
-            // Pompalı ise mermi sayısı kadar döngü çalıştır ve her birine rastgele açı ver
             for (int i = 0; i < pompaliMermiSayisi; i++)
             {
-                Vector3 sacmaYonu = namluUcu.forward;
+                Vector3 sacmaYonu = firlamaYonu;
                 sacmaYonu.x += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
                 sacmaYonu.y += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
                 sacmaYonu.z += Random.Range(-pompaliSacilmaAcisi, pompaliSacilmaAcisi);
 
-                CizgiCiz(sacmaYonu);
+                MermiFirlat(sacmaYonu.normalized);
             }
         }
         else
         {
-            // Normal tekli veya otomatik ise tek bir düz çizgi at
-            CizgiCiz(namluUcu.forward);
+            MermiFirlat(firlamaYonu);
         }
     }
 
-    // Çizgi oluşturma ve Raycast hesaplama işini yapan yardımcı fonksiyon
-    void CizgiCiz(Vector3 yon)
+    void MermiFirlat(Vector3 normalizeYon)
     {
-        Ray ray = new Ray(namluUcu.position, yon);
-        RaycastHit hit;
-        Vector3 bitisNoktasi;
+        // 🛡️ REZALET DOĞRULTU SAPMASINI ÖNLEYEN KİLİT SATIR: 
+        // Mermiyi namlu ucunda doğurup, gideceği tam yöne doğru kafasını çeviriyoruz aga.
+        GameObject go = Instantiate(mermiPrefab, namluUcu.position, Quaternion.LookRotation(normalizeYon));
 
-        if (Physics.Raycast(ray, out hit, menzil))
+        Rigidbody rb = go.GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            bitisNoktasi = hit.point; // Saçmanın çarptığı yüzey
-        }
-        else
-        {
-            bitisNoktasi = namluUcu.position + yon * menzil; // Boşluğa giden saçma sınırı
+            rb.linearVelocity = normalizeYon * mermiHizi;
         }
 
-        GameObject izObjesi = Instantiate(mermiIziPrefab, namluUcu.position, Quaternion.identity);
-        LineRenderer line = izObjesi.GetComponent<LineRenderer>();
-
-        if (line != null)
-        {
-            line.SetPosition(0, namluUcu.position);
-            line.SetPosition(1, bitisNoktasi);
-        }
-
-        Destroy(izObjesi, izKalmaSuresi);
+        Destroy(go, mermiImhaSuresi);
     }
 
     void MermiYolla(bool sacilmaVar)
@@ -274,7 +281,10 @@ public class SilahAtes : MonoBehaviour
         Ray ray = new Ray(oyuncuKamerasi.transform.position, rayYonu);
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, menzil))
+        // 🛡️ Mermilerin hasar ışınını yutmasını engellemek için IgnoreRaycast katmanını burada da filtreledik aga
+        int mask = ~LayerMask.GetMask("Ignore Raycast");
+
+        if (Physics.Raycast(ray, out hit, menzil, mask))
         {
             ZombiCan vurulanZombi = hit.transform.GetComponentInParent<ZombiCan>();
 

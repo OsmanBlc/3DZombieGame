@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class ZombiCan : MonoBehaviour
@@ -13,8 +14,13 @@ public class ZombiCan : MonoBehaviour
     public float zombieHurtVolume = 0.8f;
     public float zombieHurtCooldown = 0.2f;
 
+    [Header("Ekonomi Ödülleri")]
+    [Tooltip("Zombi öldüğünde cüzdana tek seferde eklenecek toplu para miktarı")]
+    public int olumOduluPara = 150; // Tek seferde toplu geleceği için ödülü bir tık yükselttim kanka, keyfine göre değiştirirsin
+
     private bool olduMu = false;
     private float sonrakiHurtSesZamani = 0f;
+    private SilahDegistirici silahManager;
 
     void Start()
     {
@@ -22,6 +28,9 @@ public class ZombiCan : MonoBehaviour
 
         if (animator == null)
             animator = GetComponent<Animator>();
+
+        // Sahnede parayı tutan script'i otomatik buluyoruz aga
+        silahManager = FindFirstObjectByType<SilahDegistirici>();
     }
 
     public void HasarAl(float hasarMiktari, Vector3 vurulmaNoktasi)
@@ -30,6 +39,8 @@ public class ZombiCan : MonoBehaviour
 
         mevcutCan -= hasarMiktari;
         ZombieHurtSesiCal();
+
+        // 🌟 DEĞİŞİKLİK: Vuruş başına para ekleme satırı buradan tamamen kaldırıldı kanka!
 
         // Hafif vurulma tepkisi
         Vector3 geriYon = (transform.position - vurulmaNoktasi).normalized;
@@ -48,7 +59,14 @@ public class ZombiCan : MonoBehaviour
     {
         if (olduMu) return;
         olduMu = true;
+
         BolumManager.ZombieOlduruldu();
+
+        // 🎯 TOPLU ÖDÜL SİSTEMİ: Oyuncu zombiyi tamamen indirdiği an parayı tek seferde kasaya yüklüyoruz kanka!
+        if (silahManager != null)
+        {
+            silahManager.ParaEkle(olumOduluPara);
+        }
 
         if (animator != null)
             animator.SetTrigger("Die");

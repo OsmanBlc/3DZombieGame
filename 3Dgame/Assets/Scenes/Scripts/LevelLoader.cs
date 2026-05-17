@@ -1,25 +1,24 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class LevelLoader : MonoBehaviour
 {
-    [SerializeField] private Sprite lockedIcon;
-    [SerializeField] private Vector2 lockedIconSize = new Vector2(110f, 110f);
-    [SerializeField] private float lockedIconDuration = 1.5f;
-
-    private Coroutine lockedIconRoutine;
-    private Image activeLockedIcon;
-
     private void Awake()
     {
         EnsureEventSystem();
-        BindLevelButton("Level1", LoadLevel1);
-        BindLevelButton("Level2", () => ShowLockedIcon("Level2"));
-        BindLevelButton("Level3", () => ShowLockedIcon("Level3"));
-        BindLevelButton("Level4", () => ShowLockedIcon("Level4"));
-        BindLevelButton("Level5", () => ShowLockedIcon("Level5"));
+
+        // 1. Bölüm oyuna başlarken her zaman açık kanka
+        PlayerPrefs.SetInt("Level1_Acildi", 1);
+
+        // Bölümleri hiyerarşideki adlarına göre hafızadan kontrol edip bağlıyoruz
+        KurulumVeBaglanti("Level1", LoadLevel1);
+        KurulumVeBaglanti("Level2", LoadLevel2);
+        KurulumVeBaglanti("Level3", LoadLevel3);
+        KurulumVeBaglanti("Level4", LoadLevel4);
+        KurulumVeBaglanti("Level5", LoadLevel5);
     }
 
     private void Start()
@@ -29,101 +28,68 @@ public class LevelLoader : MonoBehaviour
         Cursor.visible = true;
     }
 
-    public void LoadLevel1()
-    {
-        LoadScene("Level1");
-    }
+    // --- Sahne Yükleme Fonksiyonları ---
+    public void LoadLevel1() { SeviyeKontrolVeYukle("Level1"); }
+    public void LoadLevel2() { SeviyeKontrolVeYukle("Level2"); }
+    public void LoadLevel3() { SeviyeKontrolVeYukle("Level3"); }
+    public void LoadLevel4() { SeviyeKontrolVeYukle("Level4"); }
+    public void LoadLevel5() { SeviyeKontrolVeYukle("Level5"); }
 
-    public void LoadLevel2()
+    private void SeviyeKontrolVeYukle(string levelName)
     {
-        ShowLockedIcon("Level2");
-    }
-
-    public void LoadLevel3()
-    {
-        ShowLockedIcon("Level3");
-    }
-
-    public void LoadLevel4()
-    {
-        ShowLockedIcon("Level4");
-    }
-
-    public void LoadLevel5()
-    {
-        ShowLockedIcon("Level5");
-    }
-
-    private void LoadScene(string sceneName)
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(sceneName);
-    }
-
-    private void ShowLockedIcon(string buttonName)
-    {
-        Transform buttonTransform = FindChildByName(buttonName);
-        if (buttonTransform == null)
+        if (PlayerPrefs.GetInt(levelName + "_Acildi", 0) == 1)
         {
-            Debug.Log("Kilitli");
-            return;
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(levelName);
+        }
+        else
+        {
+            Debug.LogWarning(levelName + " henüz kilitli kanka!");
+        }
+    }
+
+    // --- Sadece Buton ve Yazı Yöneten Fonksiyon ---
+    private void KurulumVeBaglanti(string levelName, UnityEngine.Events.UnityAction action)
+    {
+        Transform buttonTransform = FindChildByName(levelName);
+        if (buttonTransform == null) return;
+
+        Button button = buttonTransform.GetComponent<Button>();
+        if (button == null) return;
+
+        // Butonun altındaki senin elinle oluşturduğun o TextMeshPro yazısını buluyoruz kanka
+        // (Yazının adının hiyerarşide tam olarak "LockedText" olması gerekir)
+        Transform textTransform = buttonTransform.Find("LockedText");
+        TextMeshProUGUI durumYazisi = null;
+        if (textTransform != null)
+        {
+            durumYazisi = textTransform.GetComponent<TextMeshProUGUI>();
         }
 
-        Image lockedImage = GetOrCreateLockedIcon(buttonTransform);
+        // HAFIZADAN KONTROL: Bölüm açılmış mı?
+        bool isUnlocked = PlayerPrefs.GetInt(levelName + "_Acildi", 0) == 1;
 
-        if (activeLockedIcon != null && activeLockedIcon != lockedImage)
-            activeLockedIcon.gameObject.SetActive(false);
+        if (isUnlocked)
+        {
+            // 🔓 BÖLÜM AÇIKSA:
+            button.interactable = true;
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(action);
 
-        activeLockedIcon = lockedImage;
-        lockedImage.sprite = lockedIcon;
-        lockedImage.gameObject.SetActive(true);
+            // Yazı kısmına "OYNA" yazdırabilirsin ya da tamamen boş bırakabilirsin kanka kilit kalkınca
+            if (durumYazisi != null) durumYazisi.text = "";
+        }
+        else
+        {
+            // 🔒 BÖLÜM KİLİTLİYSE:
+            button.interactable = false;
 
-        if (lockedIconRoutine != null)
-            StopCoroutine(lockedIconRoutine);
-
-        lockedIconRoutine = StartCoroutine(HideLockedIconAfterDelay(lockedImage));
+            // Senin elinle yerleştirdiğin yazıya dokunup "KİLİTLİ" yazdırıyoruz kanka
+            if (durumYazisi != null) durumYazisi.text = "KİLİTLİ";
+        }
     }
 
-    private System.Collections.IEnumerator HideLockedIconAfterDelay(Image lockedImage)
-    {
-        yield return new WaitForSecondsRealtime(lockedIconDuration);
-
-        if (lockedImage != null)
-            lockedImage.gameObject.SetActive(false);
-
-        if (activeLockedIcon == lockedImage)
-            activeLockedIcon = null;
-
-        lockedIconRoutine = null;
-    }
-
-    private Image GetOrCreateLockedIcon(Transform buttonTransform)
-    {
-        Transform existingIcon = buttonTransform.Find("LockedIcon");
-        if (existingIcon != null && existingIcon.TryGetComponent(out Image image))
-            return image;
-
-        GameObject lockedIconObject = new GameObject("LockedIcon");
-        lockedIconObject.transform.SetParent(buttonTransform, false);
-
-        RectTransform rectTransform = lockedIconObject.AddComponent<RectTransform>();
-        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        rectTransform.anchoredPosition = Vector2.zero;
-        rectTransform.sizeDelta = lockedIconSize;
-
-        Image lockedImage = lockedIconObject.AddComponent<Image>();
-        lockedImage.sprite = lockedIcon;
-        lockedImage.preserveAspect = true;
-        lockedImage.raycastTarget = false;
-
-        Shadow shadow = lockedIconObject.AddComponent<Shadow>();
-        shadow.effectColor = Color.black;
-        shadow.effectDistance = new Vector2(2f, -2f);
-
-        return lockedImage;
-    }
-
+    // --- Altyapı ve Arama Fonksiyonları ---
     private void EnsureEventSystem()
     {
         EventSystem eventSystem = FindObjectOfType<EventSystem>();
@@ -145,20 +111,6 @@ public class LevelLoader : MonoBehaviour
         eventSystemObject.AddComponent<StandaloneInputModule>();
     }
 
-    private void BindLevelButton(string buttonName, UnityEngine.Events.UnityAction action)
-    {
-        Transform buttonTransform = FindChildByName(buttonName);
-        if (buttonTransform == null)
-            return;
-
-        Button button = buttonTransform.GetComponent<Button>();
-        if (button == null)
-            return;
-
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(action);
-    }
-
     private Transform FindChildByName(string objectName)
     {
         Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
@@ -172,7 +124,6 @@ public class LevelLoader : MonoBehaviour
 
             return candidate;
         }
-
         return null;
     }
 }
