@@ -9,6 +9,18 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.82
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.82
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.82
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.026
       objectReference: {fileID: 0}
@@ -18,7 +30,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.18
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
       propertyPath: m_LocalRotation.w
@@ -48,6 +60,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
       propertyPath: m_Name
       value: Zombiegirl W Kurniawan
@@ -72,6 +88,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
       insertIndex: -1
       addedObject: {fileID: 801769697273223653}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -3360781111522183475}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -2155214007031616987}
   m_SourcePrefab: {fileID: 100100000, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}
 --- !u!1 &4309046959162884812 stripped
 GameObject:
@@ -91,9 +113,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZombieFollow
   player: {fileID: 0}
-  speed: 0.7
-  stopDistance: 1.8
+  speed: 1.7
+  stopDistance: 2.8
+  chaseDistance: 50
   attackCooldown: 1.5
+  damageDelay: 0.4
   zombieFootstepClip: {fileID: 8300000, guid: 7765780ae86554942a1f4f16e582a7e5, type: 3}
   zombieFootstepSource: {fileID: 0}
   zombieFootstepVolume: 0.55
@@ -117,6 +141,7 @@ MonoBehaviour:
   zombieHurtClip: {fileID: 8300000, guid: 821e8e7afd01d415398714997d72be04, type: 3}
   zombieHurtVolume: 0.8
   zombieHurtCooldown: 0.2
+  olumOduluPara: 150
 --- !u!136 &7276928721830306564
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -153,6 +178,56 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZombieAttack
   damagePerSecond: 5
+--- !u!54 &-3360781111522183475
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4309046959162884812}
+  serializedVersion: 5
+  m_Mass: 100
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!136 &-2155214007031616987
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4309046959162884812}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 1
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.47, z: -0.38}
 --- !u!95 &7378922697317417484 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 4efd6cfcbe44b8c468b4e33542a7a446, type: 3}

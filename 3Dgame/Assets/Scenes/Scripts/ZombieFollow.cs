@@ -6,8 +6,14 @@ public class ZombieFollow : MonoBehaviour
     public float speed = 1.5f;
     public float stopDistance = 1.8f;
 
-    // 🔥 Yeni ekledikler
+    // 👁️ Zombinin oyuncuyu fark etme mesafesi
+    [Header("Detection Settings")]
+    public float chaseDistance = 40f;
+
+    // 🔥 Saldırı Ayarları
+    [Header("Attack Settings")]
     public float attackCooldown = 1.5f;
+    public float damageDelay = 0.4f; // Saldırı animasyonu başladıktan kaç saniye sonra hasar vurulsun?
 
     [Header("Footstep")]
     public AudioClip zombieFootstepClip;
@@ -43,10 +49,19 @@ public class ZombieFollow : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
 
+        // 🎯 ŞART 1: Oyuncu takip mesafesinin DIŞINDAYSA zombi sakin kalır (Idle)
+        if (distance > chaseDistance)
+        {
+            anim.SetBool("isWalking", false);
+            return;
+        }
+
+        // Eğer buraya geçtiyse zombi oyuncuyu fark etmiştir:
         // Oyuncuya bak
         Vector3 targetPos = new Vector3(player.position.x, transform.position.y, player.position.z);
         transform.LookAt(targetPos);
 
+        // 🎯 ŞART 2: Oyuncu takip mesafesinde AMA saldırı mesafesinden UZAKTAYSA (YÜRÜME)
         if (distance > stopDistance)
         {
             // 🟢 YÜRÜME
@@ -55,6 +70,7 @@ public class ZombieFollow : MonoBehaviour
             anim.SetBool("isWalking", true);
             ZombieFootstepSesiCal(distance);
         }
+        // 🎯 ŞART 3: Oyuncu dibindeyse (SALDIRI)
         else
         {
             // 🔴 SALDIRI
@@ -64,7 +80,22 @@ public class ZombieFollow : MonoBehaviour
             {
                 anim.SetTrigger("Attack");
                 attackTimer = attackCooldown;
+
+                // Animasyon başladıktan 'damageDelay' saniye sonra HasarUygula fonksiyonunu çağırır
+                Invoke(nameof(HasarUygula), damageDelay);
             }
+        }
+    }
+
+    void HasarUygula()
+    {
+        // Vuruş anında oyuncu hala zombinin yakınındaysa hasar ver (Oyuncu kaçmış olabilir)
+        if (player != null && Vector3.Distance(transform.position, player.position) <= stopDistance + 0.5f)
+        {
+            Debug.Log("Zombi oyuncuya hasar vurdu!");
+
+            // Oyuncunun can scripti hangisiyse buradaki yorum satırını kaldırıp bağlayabilirsin:
+            // player.GetComponent<PlayerHealth>().TakeDamage(10); 
         }
     }
 
@@ -79,5 +110,15 @@ public class ZombieFollow : MonoBehaviour
         zombieFootstepSource.pitch = Random.Range(0.9f, 1.08f);
         zombieFootstepSource.PlayOneShot(zombieFootstepClip, zombieFootstepVolume * SettingsManager.SfxVolume);
         nextFootstepTime = Time.time + zombieFootstepInterval;
+    }
+
+    // 🛠️ Sahne ekranında zombinin görüş alanını çizgi olarak görebilmek için
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, chaseDistance);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, stopDistance);
     }
 }

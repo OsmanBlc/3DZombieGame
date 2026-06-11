@@ -37,6 +37,7 @@ public class BolumManager : MonoBehaviour
         toplamZombi = zombiler.Length;
     }
 
+    // 🧰 Zombi öldüğünde sadece sayacı artırıyoruz, oyunu bitirmiyoruz.
     public static void ZombieOlduruldu()
     {
         if (Instance == null)
@@ -44,10 +45,16 @@ public class BolumManager : MonoBehaviour
 
         Instance.oldurulenZombi++;
 
-        if (Instance.toplamZombi > 0 && Instance.oldurulenZombi >= Instance.toplamZombi)
-        {
-            float gecenSure = Time.time - Instance.baslangicZamani;
-            GameFlowManager.ShowLevelComplete(gecenSure, Instance.ucYildizSure, Instance.ikiYildizSure);
-        }
+        // NOT: Eskiden tüm zombiler ölünce GameFlowManager tetikleniyordu, 
+        // artık oyuncunun arabaya gitmesi gerektiği için o bitiş şartını buradan kaldırdık.
+    }
+
+    // 🚗 Arabaya ulaşıldığında bu fonksiyon dışarıdan çağrılacak ve bölümü bitirecek.
+    public void ArabayaUlasildi()
+    {
+        float gecenSure = Time.time - baslangicZamani;
+
+        // Senin orijinal yıldız ve ekran gösterme kodun:
+        GameFlowManager.ShowLevelComplete(gecenSure, ucYildizSure, ikiYildizSure);
     }
 }

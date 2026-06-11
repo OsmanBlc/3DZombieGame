@@ -18,7 +18,8 @@ public class GameFlowManager : MonoBehaviour
     private GameObject settingsPanel;
     private GameObject gameOverPanel;
     private GameObject levelCompletePanel;
-    private TextMeshProUGUI yildizYazisi;
+
+    private List<Image> yildizGorselleri = new List<Image>();
     private TextMeshProUGUI sonucYazisi;
     private TextMeshProUGUI sureYazisi;
     private Slider musicSlider;
@@ -104,18 +105,22 @@ public class GameFlowManager : MonoBehaviour
         isPaused = false;
         isGameOver = false;
         isLevelComplete = false;
-        gameplaySceneActive = FindObjectOfType<PlayerHealth>() != null;
+
+        // Modern Unity standardına güncellendi
+        gameplaySceneActive = Object.FindFirstObjectByType<PlayerHealth>() != null;
 
         if (!gameplaySceneActive)
         {
-            HidePanels();
+            if (canvas != null) canvas.gameObject.SetActive(false);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             return;
         }
 
         EnsureCanvas();
+        if (canvas != null) canvas.gameObject.SetActive(true);
         HidePanels();
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -125,7 +130,7 @@ public class GameFlowManager : MonoBehaviour
         if (canvas != null)
             return;
 
-        if (FindObjectOfType<EventSystem>() == null)
+        if (Object.FindFirstObjectByType<EventSystem>() == null)
         {
             GameObject esObject = new GameObject("EventSystem");
             DontDestroyOnLoad(esObject);
@@ -168,16 +173,36 @@ public class GameFlowManager : MonoBehaviour
         CreateButton(gameOverContent, "Ana Menu", LoadMainMenu);
 
         levelCompletePanel = CreateOverlay("LevelCompletePanel");
-        CreateDialog(levelCompletePanel.transform, "LevelCompleteDialog", "BÖLÜM BİTTİ", out Transform levelCompleteContent, 540f);
-        yildizYazisi = CreateText(levelCompleteContent, "★★★", 64, FontStyles.Bold, 88f);
-        yildizYazisi.color = new Color(1f, 0.85f, 0.1f, 1f);
+        CreateDialog(levelCompletePanel.transform, "LevelCompleteDialog", "BÖLÜM BİTTİ", out Transform levelCompleteContent, 580f);
+
+        GameObject yildizKonteynir = new GameObject("YildizKonteynir");
+        yildizKonteynir.transform.SetParent(levelCompleteContent, false);
+        HorizontalLayoutGroup hLayout = yildizKonteynir.AddComponent<HorizontalLayoutGroup>();
+        hLayout.spacing = 25f;
+        hLayout.childAlignment = TextAnchor.MiddleCenter;
+        hLayout.childControlWidth = false;
+        hLayout.childControlHeight = false;
+
+        LayoutElement containerLayout = yildizKonteynir.AddComponent<LayoutElement>();
+        containerLayout.preferredHeight = 90f;
+
+        yildizGorselleri.Clear();
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject yildizObj = new GameObject("Yildiz_" + i);
+            yildizObj.transform.SetParent(yildizKonteynir.transform, false);
+            Image img = yildizObj.AddComponent<Image>();
+            yildizGorselleri.Add(img);
+
+            RectTransform rTransform = yildizObj.GetComponent<RectTransform>();
+            rTransform.sizeDelta = new Vector2(80f, 80f);
+        }
+
         sonucYazisi = CreateText(levelCompleteContent, "", 22, FontStyles.Italic, 36f);
         sureYazisi = CreateText(levelCompleteContent, "", 20, FontStyles.Normal, 30f);
         sureYazisi.color = new Color(0.7f, 0.8f, 0.9f, 1f);
         CreateButton(levelCompleteContent, "Sonraki Bölüm", LoadNextLevel);
         CreateButton(levelCompleteContent, "Ana Menu", LoadMainMenu);
-
-        HidePanels();
     }
 
     private GameObject CreateOverlay(string objectName)
@@ -527,16 +552,12 @@ public class GameFlowManager : MonoBehaviour
         return text;
     }
 
+    // 🛠️ HATALI KISIM TAMAMEN DÜZELTİLDİ: Paneller artık sorunsuz kapatılıyor.
     private void HidePanels()
     {
-        if (pausePanel != null)
-            pausePanel.SetActive(false);
-
-        if (gameOverPanel != null)
-            gameOverPanel.SetActive(false);
-
-        if (levelCompletePanel != null)
-            levelCompletePanel.SetActive(false);
+        if (pausePanel != null) pausePanel.SetActive(false);
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (levelCompletePanel != null) levelCompletePanel.SetActive(false);
     }
 
     private void OpenPause()
@@ -612,33 +633,40 @@ public class GameFlowManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        if (pausePanel != null)
-            pausePanel.SetActive(false);
-        if (gameOverPanel != null)
-            gameOverPanel.SetActive(false);
+        if (pausePanel != null) pausePanel.SetActive(false);
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
 
-        string yildiz;
-        string sonuc;
+        Sprite sariYildiz = Resources.Load<Sprite>("YildizSari");
+
+        int kazanilanYildiz = 1;
+        string sonuc = "Bitirdin en azından!";
+
         if (gecenSure < ucYildizSure)
         {
-            yildiz = "★★★";
+            kazanilanYildiz = 3;
             sonuc = "Mükemmel! Çok hızlısın!";
         }
         else if (gecenSure < ikiYildizSure)
         {
-            yildiz = "★★☆";
+            kazanilanYildiz = 2;
             sonuc = "İyi iş!";
         }
-        else
-        {
-            yildiz = "★☆☆";
-            sonuc = "Bitirdin en azından!";
-        }
 
-        if (yildizYazisi != null)
+        for (int i = 0; i < 3; i++)
         {
-            yildizYazisi.text = yildiz;
-            yildizYazisi.color = new Color(1f, 0.85f, 0.1f, 1f);
+            if (i < yildizGorselleri.Count && yildizGorselleri[i] != null)
+            {
+                yildizGorselleri[i].sprite = sariYildiz;
+
+                if (i < kazanilanYildiz)
+                {
+                    yildizGorselleri[i].color = new Color(1f, 1f, 1f, 1f);
+                }
+                else
+                {
+                    yildizGorselleri[i].color = new Color(1f, 1f, 1f, 0.2f);
+                }
+            }
         }
 
         if (sonucYazisi != null)
@@ -671,7 +699,7 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.SetFloat("MusicVolume", value);
         PlayerPrefs.Save();
 
-        MusicManager musicManager = FindObjectOfType<MusicManager>();
+        MusicManager musicManager = Object.FindFirstObjectByType<MusicManager>();
         if (musicManager == null)
             return;
 
@@ -701,7 +729,7 @@ public class GameFlowManager : MonoBehaviour
         PlayerPrefs.SetFloat("MouseSensitivity", sensitivity);
         PlayerPrefs.Save();
 
-        PlayerMovement player = FindObjectOfType<PlayerMovement>();
+        PlayerMovement player = Object.FindFirstObjectByType<PlayerMovement>();
         if (player != null)
             player.mouseSensitivity = sensitivity;
     }

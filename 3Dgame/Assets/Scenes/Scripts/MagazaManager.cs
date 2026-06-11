@@ -11,12 +11,19 @@ public class MagazaManager : MonoBehaviour
     [Tooltip("Mağaza ekranının ortasında çıkacak uyarı metni")]
     public TMP_Text bildirimYazisiText;
 
-    [Header("Silah Buton Ayarları")]
+    [Header("Silah / Eşya Fiyatları")]
     public int smgFiyati = 1500;
     public int pompaliFiyati = 3000;
+    public int canPaketiFiyati = 500;
+    public int mermiFiyati = 300;
+    public int elBombasiFiyati = 750;
 
+    [Header("Silah / Eşya Veri Bağlantıları")]
     public SilahVerisi magazaSmgVerisi;
     public SilahVerisi magazaPompaliVerisi;
+    public SilahVerisi magazaCanPaketiVerisi;
+    public SilahVerisi magazaMermiVerisi;
+    public SilahVerisi magazaElBombasiVerisi;
 
     private int toplamPara;
 
@@ -53,12 +60,10 @@ public class MagazaManager : MonoBehaviour
             }
 
             ParaUIGuncelle();
-            // 🎯 BAŞARILI BİLDİRİMİ
             BildirimGoster("SMG BAŞARIYLA SATIN ALINDI!", Color.green);
         }
         else
         {
-            // ❌ YETERSİZ BAKİYE BİLDİRİMİ
             BildirimGoster("YETERSİZ BAKİYE! ZOMBİ AVLA.", Color.red);
         }
     }
@@ -86,13 +91,107 @@ public class MagazaManager : MonoBehaviour
             }
 
             ParaUIGuncelle();
-            // 🎯 BAŞARILI BİLDİRİMİ
             BildirimGoster("POMPALI BAŞARIYLA SATIN ALINDI!", Color.green);
         }
         else
         {
-            // ❌ YETERSİZ BAKİYE BİLDİRİMİ
             BildirimGoster("YETERSİZ BAKİYE! ZOMBİ AVLA.", Color.red);
+        }
+    }
+
+    // 🔴 CAN PAKETİ SATIN ALMA (TEK SEFERLİK)
+    public void CanPaketiSatinAl()
+    {
+        if (PlayerPrefs.GetInt("Can Paketi_SatinAlindi", 0) == 1)
+        {
+            BildirimGoster("CAN PAKETİ KİLİDİ ZATEN AÇIK!", Color.yellow);
+            return;
+        }
+
+        if (toplamPara >= canPaketiFiyati)
+        {
+            toplamPara -= canPaketiFiyati;
+
+            PlayerPrefs.SetInt("ToplamPara", toplamPara);
+            PlayerPrefs.SetInt("Can Paketi_SatinAlindi", 1);
+            PlayerPrefs.Save();
+
+            if (magazaCanPaketiVerisi != null)
+            {
+                magazaCanPaketiVerisi.satinAlindi = true;
+                magazaCanPaketiVerisi.ButonUIGuncelle();
+            }
+
+            ParaUIGuncelle();
+            BildirimGoster("CAN PAKETİ BAŞARIYLA SATIN ALINDI!", Color.green);
+        }
+        else
+        {
+            BildirimGoster("YETERSİZ BAKİYE!", Color.red);
+        }
+    }
+
+    // 🟢 MERMİ SATIN ALMA (TEK SEFERLİK)
+    public void MermiSatinAl()
+    {
+        if (PlayerPrefs.GetInt("Mermi_SatinAlindi", 0) == 1)
+        {
+            BildirimGoster("MERMİ KİLİDİ ZATEN AÇIK!", Color.yellow);
+            return;
+        }
+
+        if (toplamPara >= mermiFiyati)
+        {
+            toplamPara -= mermiFiyati;
+
+            PlayerPrefs.SetInt("ToplamPara", toplamPara);
+            PlayerPrefs.SetInt("Mermi_SatinAlindi", 1);
+            PlayerPrefs.Save();
+
+            if (magazaMermiVerisi != null)
+            {
+                magazaMermiVerisi.satinAlindi = true;
+                magazaMermiVerisi.ButonUIGuncelle();
+            }
+
+            ParaUIGuncelle();
+            BildirimGoster("MERMİ BAŞARIYLA SATIN ALINDI!", Color.green);
+        }
+        else
+        {
+            BildirimGoster("YETERSİZ BAKİYE!", Color.red);
+        }
+    }
+
+    // 🔵 EL BOMBASI SATIN ALMA (TEK SEFERLİK)
+    public void ElBombasiSatinAl()
+    {
+        if (PlayerPrefs.GetInt("El Bombasi_SatinAlindi", 0) == 1)
+        {
+            BildirimGoster("EL BOMBASI KİLİDİ ZATEN AÇIK!", Color.yellow);
+            return;
+        }
+
+        if (toplamPara >= elBombasiFiyati)
+        {
+            toplamPara -= elBombasiFiyati;
+
+            PlayerPrefs.SetInt("ToplamPara", toplamPara);
+            PlayerPrefs.SetInt("El Bombasi_SatinAlindi", 1);
+            PlayerPrefs.Save();
+
+            if (magazaElBombasiVerisi != null)
+            {
+                magazaElBombasiVerisi.satinAlindi = true;
+                magazaElBombasiVerisi.ButonUIGuncelle();
+            }
+
+            ParaUIGuncelle();
+            BildirimGoster("EL BOMBASI BAŞARIYLA SATIN ALINDI!", Color.green);
+        }
+        else
+        {
+            BildirimGoster("YETERSİZ BAKİYE!", Color.red);
         }
     }
 
@@ -102,12 +201,11 @@ public class MagazaManager : MonoBehaviour
             magazaParaYazisi.text = toplamPara.ToString();
     }
 
-    // 🌟 2 SANİYELİĞE EKRANDA YAZI ÇIKARTAN SİHİRLİ FONKSİYON kanka
     public void BildirimGoster(string mesaj, Color yaziRengi)
     {
         if (bildirimYazisiText != null)
         {
-            StopAllCoroutines(); // Eğer üst üste basarsa eski zamanlayıcıyı sıfırlar
+            StopAllCoroutines();
             StartCoroutine(BildirimZamanlayici(mesaj, yaziRengi));
         }
     }
@@ -118,7 +216,7 @@ public class MagazaManager : MonoBehaviour
         bildirimYazisiText.color = yaziRengi;
         bildirimYazisiText.gameObject.SetActive(true);
 
-        yield return new WaitForSeconds(2.0f); // Ekranda 2 saniye kalır kanka
+        yield return new WaitForSeconds(2.0f);
 
         bildirimYazisiText.gameObject.SetActive(false);
     }
